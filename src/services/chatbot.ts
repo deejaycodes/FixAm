@@ -341,8 +341,8 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
           ? `\n📍 Live tracking: ${artisan.name} is sharing their location`
           : '';
         await sendButtons(from, `✅ Estimated cost: ${estimate}\n\nWe've found a verified artisan for you:\n👤 ${artisan.name}\n⭐ Rating: ${artisan.rating}/5${trackingMsg}\n\n📞 Phone will be shared once they accept.`, [
+          { id: 'confirm', title: '✅ Confirm' },
           { id: 'cancel', title: '❌ Cancel' },
-          { id: 'track', title: '📍 Track' },
         ]);
         if (artisan.whatsappId) {
           const urgency = session.emergency ? '🚨 EMERGENCY ' : '';
@@ -426,6 +426,10 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
 
     case 'active_job': {
       const text = (message.interactive?.button_reply?.id || message.text?.body || '').toLowerCase().trim();
+      if (text === 'confirm') {
+        await sendMessage(from, '✅ Booking confirmed! We\'ll notify you when the artisan accepts.\n\nReply "track" for location, "cancel" to cancel, or rate 1-5 when done.');
+        return;
+      }
       if (text === 'cancel') {
         await ServiceRequest.update({ status: 'cancelled' }, { where: { id: session.requestId } });
         await sendMessage(from, 'Your request has been cancelled. Send "Hi" to start again.');
