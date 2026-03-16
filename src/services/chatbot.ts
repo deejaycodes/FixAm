@@ -1,5 +1,5 @@
 import { sendMessage, sendInteractiveList } from './whatsapp';
-import { estimatePrice } from './pricing';
+import { estimatePrice, applyLoyaltyDiscount } from './pricing';
 import { findBestArtisan } from './matching';
 import { getSession, setSession, deleteSession, Session } from './sessions';
 import { transcribeVoiceNote } from './transcription';
@@ -16,6 +16,7 @@ const SERVICE_MENU = [
   { id: 'ac_repair', title: '❄️ AC Repair' },
   { id: 'generator', title: '⚙️ Generator Repair' },
   { id: 'carpentry', title: '🪚 Carpentry' },
+  { id: 'emergency', title: '🚨 Emergency (1.5x)' },
 ];
 
 // ── Main entry point ────────────────────────────────────────────
@@ -155,7 +156,7 @@ async function handleArtisanJobResponse(from: string, artisan: InstanceType<type
     await sendMessage(from, '✅ Job accepted! Contact the customer and head over.');
     const customer = await Customer.findByPk(request.CustomerId!);
     if (customer?.whatsappId) {
-      await sendMessage(customer.whatsappId, `🎉 ${artisan.name} has accepted your job and is on the way!\nRate 1-5 when the job is done.`);
+      await sendMessage(customer.whatsappId, `🎉 ${artisan.name} has accepted your job and is on the way!\n📞 Contact: ${artisan.phone}\n\nRate 1-5 when the job is done.`);
     }
   } else {
     await request.update({ ArtisanId: null, status: 'pending' });
@@ -248,6 +249,13 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
       const serviceType = message.interactive?.list_reply?.id || message.text?.body?.toLowerCase();
       const valid = SERVICE_MENU.find(s => s.id === serviceType);
       if (!valid) { await sendMessage(from, 'Please select a service from the list.'); return; }
+      if (serviceType === 'emergency') {
+        session.emergency = true;
+        await sendInteractiveList(from, '🚨 Emergency! What type of service?', 'Select Service', [{
+          title: 'Services', rows: SERVICE_MENU.filter(s => s.id !== 'emergency'),
+        }]);
+        return; // stay on awaiting_service
+      }
       session.serviceType = serviceType!;
       await sendMessage(from, 'Please describe the problem (you can also send a voice note):');
       session.step = 'awaiting_description';
@@ -273,14 +281,24 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
       if (!loc) { await sendMessage(from, 'Please use the attachment button to share your location 📍'); return; }
       session.location = { lat: loc.latitude, lng: loc.longitude };
 
-      const priceRange = estimatePrice(session.serviceType as any);
-      const estimate = priceRange ? `₦${priceRange.min.toLocaleString()} – ₦${priceRange.max.toLocaleString()}` : 'TBD';
+      const priceRange = estimatePrice(session.serviceType as any, session.description, session.emergency);
+      let estimate = priceRange ? `₦${priceRange.min.toLocaleString()} – ₦${priceRange.max.toLocaleString()}` : 'TBD';
+      if (session.emergency) estimate += ' ⚡ (emergency rate)';
 
       let customer = await Customer.findOne({ where: { whatsappId: from } });
       if (!customer) {
         customer = await Customer.create({ phone: from, whatsappId: from, location: session.location });
       } else {
         await customer.update({ location: session.location });
+      }
+
+      // Loyalty discount for repeat customers
+      const completedJobs = await ServiceRequest.count({ where: { CustomerId: customer.id, status: 'completed' } });
+      if (priceRange && completedJobs >= 3) {
+        priceRange.min = applyLoyaltyDiscount(priceRange.min, completedJobs);
+        priceRange.max = applyLoyaltyDiscount(priceRange.max, completedJobs);
+        estimate = `₦${priceRange.min.toLocaleString()} – ₦${priceRange.max.toLocaleString()} (5% loyalty discount!)`;
+        if (session.emergency) estimate += ' ⚡';
       }
 
       const request = await ServiceRequest.create({
@@ -318,9 +336,10 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
         const trackingMsg = artisan.sharingLocation && artisan.liveLocation
           ? `\n📍 Live tracking: ${artisan.name} is sharing their location`
           : '';
-        await sendMessage(from, `✅ Estimated cost: ${estimate}\n\nWe've found a verified artisan for you:\n👤 ${artisan.name}\n⭐ Rating: ${artisan.rating}/5\n📞 ${artisan.phone}${trackingMsg}\n\nYour referral code: ${customer.referralCode}\nShare it with friends for ₦1,000 off!\n\nReply "cancel" to cancel, "problem" to report an issue, or "track" for artisan location.`);
+        await sendMessage(from, `✅ Estimated cost: ${estimate}\n\nWe've found a verified artisan for you:\n👤 ${artisan.name}\n⭐ Rating: ${artisan.rating}/5${trackingMsg}\n\n📞 Phone will be shared once they accept.\n\nYour referral code: ${customer.referralCode}\nShare it with friends for ₦1,000 off!\n\nReply "cancel" to cancel, "problem" to report an issue, or "track" for artisan location.`);
         if (artisan.whatsappId) {
-          await sendMessage(artisan.whatsappId, `🔔 New job!\nService: ${session.serviceType}\nProblem: ${session.description}\nEstimate: ${estimate}\n\nReply "accept" or "decline"`);
+          const urgency = session.emergency ? '🚨 EMERGENCY ' : '';
+          await sendMessage(artisan.whatsappId, `🔔 ${urgency}New job!\nService: ${session.serviceType}\nProblem: ${session.description}\nEstimate: ${estimate}\n\nReply "accept" or "decline"`);
         }
       } else {
         await sendMessage(from, `✅ Estimated cost: ${estimate}\n\nWe're searching for an available artisan near you. We'll notify you within 30 minutes.`);

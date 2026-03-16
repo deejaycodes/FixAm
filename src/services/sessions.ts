@@ -15,6 +15,7 @@ export interface Session {
   lastArtisanId?: string;
   lastServiceType?: string;
   repeatArtisanId?: string;
+  emergency?: boolean;
 }
 
 const memStore = new Map<string, Session>();
