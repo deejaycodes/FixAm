@@ -20,3 +20,16 @@ export function adminAuth(req: Request, res: Response, next: NextFunction): void
 
   res.status(401).json({ error: 'Unauthorized' });
 }
+
+export function customerAuth(req: Request, res: Response, next: NextFunction): void {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) { res.status(401).json({ error: 'Unauthorized' }); return; }
+  try {
+    const payload = jwt.verify(authHeader.slice(7), JWT_SECRET) as any;
+    if (!payload.customerId) { res.status(401).json({ error: 'Unauthorized' }); return; }
+    (req as any).customerId = payload.customerId;
+    next();
+  } catch {
+    res.status(401).json({ error: 'Unauthorized' });
+  }
+}

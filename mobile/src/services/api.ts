@@ -12,9 +12,9 @@ async function request(path: string, options?: RequestInit) {
 export const api = {
   // Auth
   register: (phone: string, name: string) =>
-    request('/api/auth/register', { method: 'POST', body: JSON.stringify({ phone, name }) }),
+    request('/api/customer/register', { method: 'POST', body: JSON.stringify({ phone, name }) }),
   login: (phone: string) =>
-    request('/api/auth/login', { method: 'POST', body: JSON.stringify({ phone }) }),
+    request('/api/customer/login', { method: 'POST', body: JSON.stringify({ phone }) }),
 
   // Service requests
   createRequest: (token: string, data: { serviceType: string; description: string; location: { lat: number; lng: number }; emergency?: boolean }) =>
