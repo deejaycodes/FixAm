@@ -400,16 +400,19 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
 
     case 'awaiting_referral': {
       const btnId = message.interactive?.button_reply?.id;
-      if (btnId) {
-        // User tapped a button from the match card — skip referral, handle as active_job
+      const text = (message.interactive?.button_reply?.id || message.text?.body || '').trim().toLowerCase();
+
+      // Any button tap or active_job command → skip referral, go to active_job
+      if (btnId || ['cancel', 'confirm', 'track', 'problem', 'guarantee', 'subscribe'].includes(text)) {
         session.step = 'active_job';
         return handleCustomerFlow(from, message, session);
       }
-      const text = (message.text?.body || '').trim();
-      if (text.toLowerCase() !== 'skip') {
+
+      const raw = (message.text?.body || '').trim();
+      if (raw.toLowerCase() !== 'skip') {
         const customer = await Customer.findOne({ where: { whatsappId: from } });
         if (customer) {
-          const result = await applyReferralCode(text.toUpperCase(), customer.id);
+          const result = await applyReferralCode(raw.toUpperCase(), customer.id);
           if (result) {
             const req = await ServiceRequest.findByPk(session.requestId!);
             await req?.update({ discount: result.discount });
