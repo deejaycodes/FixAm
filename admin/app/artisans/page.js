@@ -1,6 +1,7 @@
 import Sidebar from '../../components/Sidebar';
 import { fetchAPI } from '../../lib/api';
 import ArtisanActions from './actions';
+import Link from 'next/link';
 
 export default async function ArtisansPage() {
   let artisans = [];
@@ -30,8 +31,8 @@ export default async function ArtisansPage() {
               </thead>
               <tbody>
                 {artisans.map(a => (
-                  <tr key={a.id}>
-                    <td>{a.name}</td>
+                  <tr key={a.id} className="clickable-row">
+                    <td><Link href={`/artisans/${a.id}`} className="row-link">{a.name}</Link></td>
                     <td>{a.phone}</td>
                     <td>{a.services?.join(', ') || '—'}</td>
                     <td>⭐ {a.rating}</td>

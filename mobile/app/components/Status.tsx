@@ -10,12 +10,12 @@ function Stepper({ step }: { step: number }) {
       {stepLabels.map((label, i) => (
         <div key={label} className="flex items-center flex-1">
           <div className="flex flex-col items-center">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${i <= step ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-300'}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${i <= step ? 'bg-teal-600 text-white shadow-md' : 'bg-gray-200 text-gray-400'}`}>
               {i < step ? '✓' : i + 1}
             </div>
-            <span className={`text-[9px] mt-1 font-medium ${i <= step ? 'text-teal-600' : 'text-gray-300'}`}>{label}</span>
+            <span className={`text-[9px] mt-1 font-medium ${i <= step ? 'text-teal-700' : 'text-gray-400'}`}>{label}</span>
           </div>
-          {i < 3 && <div className={`flex-1 h-0.5 mx-1 mt-[-12px] ${i < step ? 'bg-teal-600' : 'bg-gray-100'}`} />}
+          {i < 3 && <div className={`flex-1 h-0.5 mx-1 mt-[-12px] ${i < step ? 'bg-teal-600' : 'bg-gray-200'}`} />}
         </div>
       ))}
     </div>
@@ -25,6 +25,8 @@ function Stepper({ step }: { step: number }) {
 export default function Status({ nav, token, params }: { nav: (s: string, p?: any) => void; token: string; params: any }) {
   const [req, setReq] = useState<any>(null);
   const [hoverStar, setHoverStar] = useState(0);
+  const [note, setNote] = useState('');
+  const [noteSaved, setNoteSaved] = useState(false);
 
   useEffect(() => {
     const load = () => api(`/api/requests/${params.requestId}`, { headers: { Authorization: `Bearer ${token}` } }).then(setReq).catch(() => {});
@@ -44,20 +46,22 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
   const s = statusMap[req.status] || statusMap.pending;
   const art = req.Artisan;
   const canContact = req.status === 'accepted' || req.status === 'in_progress';
+  const isActive = ['pending', 'assigned', 'accepted', 'in_progress'].includes(req.status);
 
   return (
     <div className="animate-in px-5 pt-16">
-      <div className={`inline-flex items-center gap-2 ${s.bg} ${s.color} rounded-full px-3 py-1.5 text-xs font-semibold mb-3`}>
+      <div className={`inline-flex items-center gap-2 ${s.bg} ${s.color} rounded-full px-3 py-1.5 text-xs font-semibold mb-3 border ${s.color.replace('text-', 'border-')}/20`}>
         <span>{s.icon}</span> {s.label}
       </div>
-      <h2 className="text-xl font-bold text-gray-900 capitalize mb-6">{req.serviceType?.replace('_', ' ')}</h2>
+      <h2 className="text-xl font-bold text-gray-900 capitalize mb-1">{req.serviceType?.replace('_', ' ')}</h2>
+      {req.description && <p className="text-sm text-gray-500 mb-6">{req.description}</p>}
 
       {s.step >= 0 && <Stepper step={s.step} />}
 
       {art && (
-        <div className="bg-white shadow-sm rounded-2xl p-5 mb-4">
+        <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center text-lg font-bold text-teal-700">
+            <div className="w-12 h-12 bg-teal-600 rounded-full flex items-center justify-center text-lg font-bold text-white shadow-md">
               {art.name?.[0] || 'A'}
             </div>
             <div className="flex-1">
@@ -65,15 +69,15 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
                 <p className="font-bold text-gray-900">{art.name}</p>
                 {art.verified && <span className="text-[10px] bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded-full font-semibold">✓ Verified</span>}
               </div>
-              <p className="text-gray-400 text-xs mt-0.5">{'⭐'.repeat(Math.round(art.rating || 0))} {art.rating}/5</p>
+              <p className="text-gray-500 text-xs mt-0.5">{'⭐'.repeat(Math.round(art.rating || 0))} {art.rating}/5</p>
             </div>
           </div>
           {canContact && art.phone && (
             <div className="flex gap-2 mt-4">
-              <a href={`tel:${art.phone}`} className="flex-1 bg-teal-600 text-white rounded-xl py-2.5 text-center font-semibold text-sm active:scale-[0.98] transition">
+              <a href={`tel:${art.phone}`} className="flex-1 bg-teal-600 text-white rounded-xl py-2.5 text-center font-semibold text-sm active:scale-[0.98] transition shadow-md">
                 📞 Call
               </a>
-              <a href={`https://wa.me/${art.phone}`} target="_blank" className="flex-1 bg-green-600 text-white rounded-xl py-2.5 text-center font-semibold text-sm active:scale-[0.98] transition">
+              <a href={`https://wa.me/${art.phone}`} target="_blank" className="flex-1 bg-green-600 text-white rounded-xl py-2.5 text-center font-semibold text-sm active:scale-[0.98] transition shadow-md">
                 💬 WhatsApp
               </a>
             </div>
@@ -82,15 +86,30 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
       )}
 
       {req.estimatedPrice && (
-        <div className="bg-gray-50 rounded-2xl p-4 mb-4 flex items-center justify-between">
-          <span className="text-sm text-gray-500">Estimated cost</span>
-          <span className="font-bold text-gray-900">₦{(req.estimatedPrice / 100).toLocaleString()}</span>
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4 flex items-center justify-between shadow-sm">
+          <span className="text-sm text-gray-600">Estimated cost</span>
+          <span className="font-bold text-lg text-gray-900">₦{(req.estimatedPrice / 100).toLocaleString()}</span>
+        </div>
+      )}
+
+      {isActive && (
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4 shadow-sm">
+          <label className="text-xs font-semibold text-gray-700 mb-2 block">Add a note for the artisan</label>
+          <div className="flex gap-2">
+            <input className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-teal-200 placeholder-gray-400"
+              placeholder="e.g. Gate code is 1234, ring doorbell..."
+              value={note} onChange={e => { setNote(e.target.value); setNoteSaved(false); }} />
+            <button onClick={() => { setNoteSaved(true); setTimeout(() => setNoteSaved(false), 2000); }}
+              className="bg-teal-600 text-white rounded-xl px-4 text-sm font-semibold active:scale-95 transition shadow-sm">
+              {noteSaved ? '✓' : 'Send'}
+            </button>
+          </div>
         </div>
       )}
 
       {req.status === 'completed' && !req.rating && (
-        <div className="bg-white shadow-sm rounded-2xl p-5 mb-4 text-center">
-          <p className="font-semibold text-sm mb-3">How was the service?</p>
+        <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 mb-4 text-center">
+          <p className="font-semibold text-sm mb-3 text-gray-800">How was the service?</p>
           <div className="flex justify-center gap-1">
             {[1,2,3,4,5].map(n => (
               <button key={n}
@@ -108,7 +127,7 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
       )}
 
       {(req.status === 'pending' || req.status === 'assigned') && (
-        <button className="text-red-400 font-medium text-sm mt-2" onClick={async () => {
+        <button className="text-red-500 font-medium text-sm mt-2" onClick={async () => {
           try { await api(`/api/requests/${params.requestId}/cancel`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); nav('home'); }
           catch (e: any) { alert(e.message); }
         }}>Cancel Request</button>
