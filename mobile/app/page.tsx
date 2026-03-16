@@ -38,7 +38,7 @@ export default function App() {
 
   return (
     <div className="max-w-md mx-auto min-h-screen flex flex-col bg-gray-50/50 relative">
-      <div className="flex-1 overflow-y-auto no-scrollbar" style={{ paddingBottom: 80 }}>
+      <div className="flex-1 overflow-y-auto no-scrollbar" style={{ paddingBottom: token ? 80 : 20 }}>
         {screen === 'home' && <Home nav={nav} token={token} user={user} />}
         {screen === 'new' && <NewRequest nav={nav} token={token} user={user} params={params} onNeedAuth={login} />}
         {screen === 'status' && <Status nav={nav} token={token!} params={params} />}
@@ -52,22 +52,24 @@ export default function App() {
         </button>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-100 safe-bottom" style={{ zIndex: 50 }}>
-        <div className="flex">
-          {tabs.map(t => {
-            const active = screen === t.id || (t.id === 'home' && isDetail);
-            return (
-              <button key={t.id} onClick={() => nav(t.id)}
-                className={`flex-1 flex flex-col items-center pt-2 pb-1 transition ${active ? 'text-teal-600' : 'text-gray-300'}`}>
-                {active && <span className="w-4 h-0.5 bg-teal-600 rounded-full mb-1" />}
-                {!active && <span className="w-4 h-0.5 mb-1" />}
-                {t.icon}
-                <span className="text-[10px] font-medium mt-0.5">{t.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+      {token && (
+        <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-100 safe-bottom" style={{ zIndex: 50 }}>
+          <div className="flex">
+            {tabs.map(t => {
+              const active = screen === t.id || (t.id === 'home' && isDetail);
+              return (
+                <button key={t.id} onClick={() => nav(t.id)}
+                  className={`flex-1 flex flex-col items-center pt-2 pb-1 transition ${active ? 'text-teal-600' : 'text-gray-300'}`}>
+                  {active && <span className="w-4 h-0.5 bg-teal-600 rounded-full mb-1" />}
+                  {!active && <span className="w-4 h-0.5 mb-1" />}
+                  {t.icon}
+                  <span className="text-[10px] font-medium mt-0.5">{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      )}
     </div>
   );
 }
