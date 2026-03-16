@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import storage from './storage';
 
 interface AuthState {
   token: string | null;
@@ -15,18 +15,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem('auth').then(d => {
+    storage.getItem('auth').then(d => {
       if (d) { const p = JSON.parse(d); setToken(p.token); setUser(p.user); }
     });
   }, []);
 
   const login = (t: string, u: any) => {
     setToken(t); setUser(u);
-    AsyncStorage.setItem('auth', JSON.stringify({ token: t, user: u }));
+    storage.setItem('auth', JSON.stringify({ token: t, user: u }));
   };
   const logout = () => {
     setToken(null); setUser(null);
-    AsyncStorage.removeItem('auth');
+    storage.removeItem('auth');
   };
 
   return <AuthContext.Provider value={{ token, user, login, logout }}>{children}</AuthContext.Provider>;
