@@ -2,3 +2,5 @@ node_modules
 dist
 .env
 .next
+.vercel
+.env*.local
