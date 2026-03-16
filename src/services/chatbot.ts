@@ -4,7 +4,9 @@ import { findBestArtisan } from './matching';
 import { getSession, setSession, deleteSession, Session } from './sessions';
 import { transcribeVoiceNote } from './transcription';
 import { applyReferralCode } from './referral';
-import { Customer, Artisan, ServiceRequest } from '../models';
+import { isPremium } from './subscription';
+import { requestQuotes, submitQuote, getQuotesForRequest, acceptQuote } from './quotes';
+import { Customer, Artisan, ServiceRequest, Quote } from '../models';
 import { fn, col, Op } from 'sequelize';
 import type { WhatsAppMessage } from './types';
 
@@ -81,8 +83,44 @@ async function handleArtisanCommands(from: string, artisan: InstanceType<typeof 
   if (text === 'online') { await artisan.update({ available: true }); await sendMessage(from, '🟢 You are now online and will receive job requests.'); return true; }
   if (text === 'offline') { await artisan.update({ available: false }); await sendMessage(from, '🔴 You are now offline. No new jobs will be sent.'); return true; }
 
+  if (text === 'share location') {
+    await artisan.update({ sharingLocation: true });
+    await sendMessage(from, '📍 Live location sharing ON. Send your location to update. Customer can track you.');
+    return true;
+  }
+  if (text === 'stop sharing') {
+    await artisan.update({ sharingLocation: false, liveLocation: null });
+    await sendMessage(from, '📍 Live location sharing OFF.');
+    return true;
+  }
+
+  // Handle location update for live tracking
+  if (!text && message.location && artisan.sharingLocation) {
+    await artisan.update({ liveLocation: { lat: message.location.latitude, lng: message.location.longitude } });
+    await sendMessage(from, '📍 Location updated.');
+    return true;
+  }
+
+  if (text === 'profile') {
+    const link = `${process.env.BASE_URL || 'http://localhost:3000'}/p/${artisan.profileSlug}`;
+    await sendMessage(from, `👤 Your public profile:\n${link}\n\nShare this link with customers!`);
+    return true;
+  }
+
+  // Handle quote price submission (number only)
+  if (/^\d+$/.test(text)) {
+    const price = parseInt(text);
+    if (price >= 1000 && price <= 500000) {
+      const submitted = await submitQuote(artisan.id, price);
+      if (submitted) {
+        await sendMessage(from, `✅ Quote of ₦${price.toLocaleString()} submitted!`);
+        return true;
+      }
+    }
+  }
+
   if (text === 'help') {
-    await sendMessage(from, `👷 Artisan Commands:\n\n"earnings" — view your earnings\n"jobs" — recent job history\n"online" — start receiving jobs\n"offline" — stop receiving jobs\n"accept" / "decline" — respond to job\n"help" — show this menu\n\n📸 Send photos during a job to attach them.`);
+    await sendMessage(from, `👷 Artisan Commands:\n\n"earnings" — view your earnings\n"jobs" — recent job history\n"online" / "offline" — toggle availability\n"accept" / "decline" — respond to job\n"profile" — your shareable profile link\n"share location" / "stop sharing" — GPS tracking\n"help" — show this menu\n\n📸 Send photos during a job\n💰 Reply with a number to submit a quote`);
     return true;
   }
 
@@ -255,6 +293,17 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
 
       session.requestId = request.id;
 
+      // Premium customers get multi-quote option
+      if (isPremium(customer)) {
+        const sent = await requestQuotes(request.id, session.serviceType as any, session.location);
+        if (sent > 0) {
+          await sendMessage(from, `⭐ Premium: We've requested quotes from ${sent} artisans.\nYou'll receive their prices shortly. Reply "quotes" to see them.`);
+          session.step = 'awaiting_quotes';
+          break;
+        }
+      }
+
+      // Standard flow: auto-match
       let artisan: InstanceType<typeof Artisan> | null = null;
       if (session.repeatArtisanId) {
         artisan = await Artisan.findByPk(session.repeatArtisanId);
@@ -266,7 +315,10 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
 
       if (artisan) {
         await request.update({ ArtisanId: artisan.id, status: 'assigned' });
-        await sendMessage(from, `✅ Estimated cost: ${estimate}\n\nWe've found a verified artisan for you:\n👤 ${artisan.name}\n⭐ Rating: ${artisan.rating}/5\n📞 ${artisan.phone}\n\nYour referral code: ${customer.referralCode}\nShare it with friends for ₦1,000 off!\n\nReply "cancel" to cancel or "problem" to report an issue.`);
+        const trackingMsg = artisan.sharingLocation && artisan.liveLocation
+          ? `\n📍 Live tracking: ${artisan.name} is sharing their location`
+          : '';
+        await sendMessage(from, `✅ Estimated cost: ${estimate}\n\nWe've found a verified artisan for you:\n👤 ${artisan.name}\n⭐ Rating: ${artisan.rating}/5\n📞 ${artisan.phone}${trackingMsg}\n\nYour referral code: ${customer.referralCode}\nShare it with friends for ₦1,000 off!\n\nReply "cancel" to cancel, "problem" to report an issue, or "track" for artisan location.`);
         if (artisan.whatsappId) {
           await sendMessage(artisan.whatsappId, `🔔 New job!\nService: ${session.serviceType}\nProblem: ${session.description}\nEstimate: ${estimate}\n\nReply "accept" or "decline"`);
         }
@@ -282,6 +334,39 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
 
       session.step = 'active_job';
       break;
+    }
+
+    case 'awaiting_quotes': {
+      const text = (message.text?.body || '').toLowerCase().trim();
+      if (text === 'quotes') {
+        const quotes = await getQuotesForRequest(session.requestId!);
+        if (quotes.length === 0) {
+          await sendMessage(from, 'No quotes yet — artisans are still responding. Try again in a minute.');
+          return;
+        }
+        const list = quotes.map((q, i) =>
+          `${i + 1}. ${q.Artisan?.name} — ₦${(q.price / 100).toLocaleString()} ⭐${q.Artisan?.rating || 0}`
+        ).join('\n');
+        await sendMessage(from, `💰 Quotes received:\n\n${list}\n\nReply with the number (1, 2, 3) to accept.`);
+        return;
+      }
+      if (['1', '2', '3'].includes(text)) {
+        const quotes = await getQuotesForRequest(session.requestId!);
+        const idx = parseInt(text) - 1;
+        if (quotes[idx]) {
+          const accepted = await acceptQuote(quotes[idx].id);
+          if (accepted?.Artisan) {
+            await sendMessage(from, `✅ You chose ${accepted.Artisan.name} at ₦${(accepted.price / 100).toLocaleString()}!\nThey'll contact you shortly.`);
+            if (accepted.Artisan.whatsappId) {
+              await sendMessage(accepted.Artisan.whatsappId, `🎉 Your quote was accepted!\nReply "accept" to confirm.`);
+            }
+          }
+          session.step = 'active_job';
+          break;
+        }
+      }
+      await sendMessage(from, 'Reply "quotes" to see available quotes, or a number (1-3) to accept one.');
+      return;
     }
 
     case 'awaiting_referral': {
@@ -339,7 +424,31 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
         await deleteSession(from);
         return;
       }
-      await sendMessage(from, 'Reply "cancel" to cancel, "problem" to report an issue, or rate 1-5 when complete.');
+      if (text === 'track') {
+        const req = await ServiceRequest.findByPk(session.requestId!, { include: [Artisan] });
+        const art = req?.Artisan;
+        if (art?.sharingLocation && art.liveLocation) {
+          await sendMessage(from, `📍 ${art.name}'s last location:\nhttps://maps.google.com/?q=${art.liveLocation.lat},${art.liveLocation.lng}`);
+        } else {
+          await sendMessage(from, 'Artisan is not sharing their location right now.');
+        }
+        return;
+      }
+      if (text === 'guarantee') {
+        const req = await ServiceRequest.findByPk(session.requestId!);
+        if (req && !req.guaranteeUsed && req.status === 'completed') {
+          await req.update({ guaranteeUsed: true, status: 'pending', rating: null, completedAt: null });
+          await sendMessage(from, '🛡️ Guarantee activated! We\'ll find another artisan to redo the job at no extra cost.');
+        } else {
+          await sendMessage(from, 'Guarantee is available after job completion if you\'re not satisfied.');
+        }
+        return;
+      }
+      if (text === 'subscribe') {
+        await sendMessage(from, '⭐ FixAm Premium — ₦5,000/month\n\n• Get quotes from multiple artisans\n• Priority matching\n• Discounted rates\n\nContact admin@fixam.ng to subscribe.');
+        return;
+      }
+      await sendMessage(from, 'Reply "cancel" to cancel, "problem" to report an issue, "track" for artisan location, "guarantee" if not satisfied, or rate 1-5 when complete.');
       break;
     }
 

@@ -13,6 +13,8 @@ interface CustomerAttributes {
   referralCode: string;
   referredBy: string | null;
   discountUsed: boolean;
+  subscriptionTier: 'free' | 'premium';
+  subscriptionExpiresAt: Date | null;
 }
 
 interface ArtisanAttributes {
@@ -31,6 +33,10 @@ interface ArtisanAttributes {
   referredBy: string | null;
   priorityBoost: boolean;
   paystackSubaccount: string | null;
+  profileSlug: string;
+  bio: string | null;
+  sharingLocation: boolean;
+  liveLocation: { lat: number; lng: number } | null;
 }
 
 interface ServiceRequestAttributes {
@@ -46,8 +52,18 @@ interface ServiceRequestAttributes {
   completedAt: Date | null;
   discount: number;
   photos: string[];
+  guaranteeUsed: boolean;
   CustomerId: string | null;
   ArtisanId: string | null;
+}
+
+interface QuoteAttributes {
+  id: string;
+  price: number;
+  message: string | null;
+  status: 'pending' | 'accepted' | 'rejected';
+  ServiceRequestId: string;
+  ArtisanId: string;
 }
 
 interface PaymentAttributes {
@@ -69,11 +85,12 @@ interface AdminUserAttributes {
 
 // ── Creation attributes (id auto-generated) ────────────────────
 
-type CustomerCreation = Optional<CustomerAttributes, 'id' | 'name' | 'whatsappId' | 'location' | 'referralCode' | 'referredBy' | 'discountUsed'>;
-type ArtisanCreation = Optional<ArtisanAttributes, 'id' | 'whatsappId' | 'location' | 'rating' | 'totalJobs' | 'verified' | 'available' | 'ninVerified' | 'referralCode' | 'referredBy' | 'priorityBoost' | 'paystackSubaccount'>;
-type ServiceRequestCreation = Optional<ServiceRequestAttributes, 'id' | 'description' | 'location' | 'estimatedPrice' | 'finalPrice' | 'status' | 'rating' | 'review' | 'completedAt' | 'discount' | 'photos' | 'CustomerId' | 'ArtisanId'>;
+type CustomerCreation = Optional<CustomerAttributes, 'id' | 'name' | 'whatsappId' | 'location' | 'referralCode' | 'referredBy' | 'discountUsed' | 'subscriptionTier' | 'subscriptionExpiresAt'>;
+type ArtisanCreation = Optional<ArtisanAttributes, 'id' | 'whatsappId' | 'location' | 'rating' | 'totalJobs' | 'verified' | 'available' | 'ninVerified' | 'referralCode' | 'referredBy' | 'priorityBoost' | 'paystackSubaccount' | 'profileSlug' | 'bio' | 'sharingLocation' | 'liveLocation'>;
+type ServiceRequestCreation = Optional<ServiceRequestAttributes, 'id' | 'description' | 'location' | 'estimatedPrice' | 'finalPrice' | 'status' | 'rating' | 'review' | 'completedAt' | 'discount' | 'photos' | 'guaranteeUsed' | 'CustomerId' | 'ArtisanId'>;
 type PaymentCreation = Optional<PaymentAttributes, 'id' | 'commission' | 'paystackRef' | 'status' | 'ServiceRequestId'>;
 type AdminUserCreation = Optional<AdminUserAttributes, 'id' | 'name'>;
+type QuoteCreation = Optional<QuoteAttributes, 'id' | 'message' | 'status'>;
 
 // ── Model classes ───────────────────────────────────────────────
 
@@ -86,6 +103,8 @@ class Customer extends Model<CustomerAttributes, CustomerCreation> implements Cu
   declare referralCode: string;
   declare referredBy: string | null;
   declare discountUsed: boolean;
+  declare subscriptionTier: 'free' | 'premium';
+  declare subscriptionExpiresAt: Date | null;
 }
 
 class Artisan extends Model<ArtisanAttributes, ArtisanCreation> implements ArtisanAttributes {
@@ -104,6 +123,10 @@ class Artisan extends Model<ArtisanAttributes, ArtisanCreation> implements Artis
   declare referredBy: string | null;
   declare priorityBoost: boolean;
   declare paystackSubaccount: string | null;
+  declare profileSlug: string;
+  declare bio: string | null;
+  declare sharingLocation: boolean;
+  declare liveLocation: { lat: number; lng: number } | null;
 }
 
 class ServiceRequest extends Model<ServiceRequestAttributes, ServiceRequestCreation> implements ServiceRequestAttributes {
@@ -119,9 +142,21 @@ class ServiceRequest extends Model<ServiceRequestAttributes, ServiceRequestCreat
   declare completedAt: Date | null;
   declare discount: number;
   declare photos: string[];
+  declare guaranteeUsed: boolean;
   declare CustomerId: string | null;
   declare ArtisanId: string | null;
   declare Customer?: Customer;
+  declare Artisan?: Artisan;
+  declare Quotes?: Quote[];
+}
+
+class Quote extends Model<QuoteAttributes, QuoteCreation> implements QuoteAttributes {
+  declare id: string;
+  declare price: number;
+  declare message: string | null;
+  declare status: 'pending' | 'accepted' | 'rejected';
+  declare ServiceRequestId: string;
+  declare ArtisanId: string;
   declare Artisan?: Artisan;
 }
 
@@ -152,6 +187,8 @@ Customer.init({
   referralCode: { type: DataTypes.STRING, unique: true, defaultValue: () => 'FX' + crypto.randomBytes(3).toString('hex').toUpperCase() },
   referredBy: { type: DataTypes.UUID },
   discountUsed: { type: DataTypes.BOOLEAN, defaultValue: false },
+  subscriptionTier: { type: DataTypes.ENUM('free', 'premium'), defaultValue: 'free' },
+  subscriptionExpiresAt: { type: DataTypes.DATE },
 }, { sequelize });
 
 Artisan.init({
@@ -170,6 +207,10 @@ Artisan.init({
   referredBy: { type: DataTypes.UUID },
   priorityBoost: { type: DataTypes.BOOLEAN, defaultValue: false },
   paystackSubaccount: { type: DataTypes.STRING },
+  profileSlug: { type: DataTypes.STRING, unique: true, defaultValue: () => crypto.randomBytes(4).toString('hex') },
+  bio: { type: DataTypes.TEXT },
+  sharingLocation: { type: DataTypes.BOOLEAN, defaultValue: false },
+  liveLocation: { type: DataTypes.JSONB },
 }, { sequelize });
 
 ServiceRequest.init({
@@ -185,6 +226,7 @@ ServiceRequest.init({
   completedAt: { type: DataTypes.DATE },
   discount: { type: DataTypes.INTEGER, defaultValue: 0 },
   photos: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] },
+  guaranteeUsed: { type: DataTypes.BOOLEAN, defaultValue: false },
   CustomerId: { type: DataTypes.UUID },
   ArtisanId: { type: DataTypes.UUID },
 }, { sequelize });
@@ -205,6 +247,15 @@ AdminUser.init({
   name: { type: DataTypes.STRING },
 }, { sequelize });
 
+Quote.init({
+  id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+  price: { type: DataTypes.INTEGER, allowNull: false },
+  message: { type: DataTypes.TEXT },
+  status: { type: DataTypes.ENUM('pending', 'accepted', 'rejected'), defaultValue: 'pending' },
+  ServiceRequestId: { type: DataTypes.UUID, allowNull: false },
+  ArtisanId: { type: DataTypes.UUID, allowNull: false },
+}, { sequelize });
+
 // ── Relationships ───────────────────────────────────────────────
 
 Customer.hasMany(ServiceRequest);
@@ -213,6 +264,10 @@ Artisan.hasMany(ServiceRequest);
 ServiceRequest.belongsTo(Artisan);
 ServiceRequest.hasOne(Payment);
 Payment.belongsTo(ServiceRequest);
+ServiceRequest.hasMany(Quote);
+Quote.belongsTo(ServiceRequest);
+Artisan.hasMany(Quote);
+Quote.belongsTo(Artisan);
 
-export { sequelize, Customer, Artisan, ServiceRequest, Payment, AdminUser };
-export type { CustomerAttributes, ArtisanAttributes, ServiceRequestAttributes, PaymentAttributes, AdminUserAttributes };
+export { sequelize, Customer, Artisan, ServiceRequest, Payment, AdminUser, Quote };
+export type { CustomerAttributes, ArtisanAttributes, ServiceRequestAttributes, PaymentAttributes, AdminUserAttributes, QuoteAttributes };

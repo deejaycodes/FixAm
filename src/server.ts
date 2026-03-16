@@ -15,6 +15,7 @@ import artisanRoutes from './routes/artisans';
 import requestRoutes from './routes/requests';
 import paymentRoutes from './routes/payments';
 import analyticsRoutes from './routes/analytics';
+import profileRoutes from './routes/profile';
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
 // Routes
 app.use('/webhook', webhookRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/p', profileRoutes); // public — no auth
 app.use('/api/artisans', adminAuth, artisanRoutes);
 app.use('/api/requests', adminAuth, requestRoutes);
 app.use('/api/payments', adminAuth, paymentRoutes);
