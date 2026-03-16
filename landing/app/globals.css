@@ -3,3 +3,7 @@
 @tailwind utilities;
 
 html { scroll-behavior: smooth; }
+
+body {
+  font-feature-settings: 'cv11', 'ss01';
+}
