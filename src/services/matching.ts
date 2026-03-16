@@ -2,7 +2,7 @@ import { Artisan } from '../models';
 import { Op } from 'sequelize';
 import type { ServiceType } from './pricing';
 
-const MAX_DISTANCE_KM = 15;
+const MAX_DISTANCE_KM = 50;
 
 interface Location {
   lat: number;
@@ -53,5 +53,11 @@ export async function findBestArtisan(serviceType: ServiceType, customerLocation
     })
     .sort((a, b) => b.score - a.score);
 
-  return scored.length > 0 ? scored[0].artisan : null;
+  // Fallback: if no one in range, return highest-rated
+  if (scored.length === 0) {
+    artisans.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    return artisans[0];
+  }
+
+  return scored[0].artisan;
 }
