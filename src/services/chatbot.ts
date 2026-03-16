@@ -1,4 +1,4 @@
-import { sendMessage, sendInteractiveList } from './whatsapp';
+import { sendMessage, sendInteractiveList, sendButtons, sendLocation } from './whatsapp';
 import { estimatePrice, applyLoyaltyDiscount } from './pricing';
 import { findBestArtisan } from './matching';
 import { getSession, setSession, deleteSession, Session } from './sessions';
@@ -11,12 +11,12 @@ import { fn, col, Op } from 'sequelize';
 import type { WhatsAppMessage } from './types';
 
 const SERVICE_MENU = [
-  { id: 'plumbing', title: '🔧 Plumbing' },
-  { id: 'electrical', title: '⚡ Electrical' },
-  { id: 'ac_repair', title: '❄️ AC Repair' },
-  { id: 'generator', title: '⚙️ Generator Repair' },
-  { id: 'carpentry', title: '🪚 Carpentry' },
-  { id: 'emergency', title: '🚨 Emergency (1.5x)' },
+  { id: 'plumbing', title: '🔧 Plumbing', description: 'Pipes, taps, drainage' },
+  { id: 'electrical', title: '⚡ Electrical', description: 'Wiring, sockets, lights' },
+  { id: 'ac_repair', title: '❄️ AC Repair', description: 'Servicing, gas refill, install' },
+  { id: 'generator', title: '⚙️ Generator Repair', description: 'Servicing, parts, install' },
+  { id: 'carpentry', title: '🪚 Carpentry', description: 'Furniture, doors, cabinets' },
+  { id: 'emergency', title: '🚨 Emergency (1.5x)', description: 'Urgent — 1.5x rate' },
 ];
 
 // ── Main entry point ────────────────────────────────────────────
@@ -27,7 +27,7 @@ export async function handleIncoming(from: string, message: WhatsAppMessage): Pr
   if (session.step === 'start') {
     const existingArtisan = await Artisan.findOne({ where: { whatsappId: from } });
     if (existingArtisan) {
-      const text = (message.text?.body || '').toLowerCase().trim();
+      const text = (message.interactive?.button_reply?.id || message.text?.body || '').toLowerCase().trim();
       if (text === 'accept' || text === 'decline') {
         return handleArtisanJobResponse(from, existingArtisan, text);
       }
@@ -221,8 +221,10 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
         if (lastJob?.Artisan) {
           session.lastArtisanId = lastJob.Artisan.id;
           session.lastServiceType = lastJob.serviceType;
-          await sendMessage(from, `Welcome back! 🛠️\n\nBook ${lastJob.Artisan.name} again for ${lastJob.serviceType}?\nReply "yes" or choose a new service below.`);
-          await sendInteractiveList(from, 'Or pick a different service:', 'New Service', [{ title: 'Services', rows: SERVICE_MENU }]);
+          await sendButtons(from, `Welcome back! 🛠️\n\nBook ${lastJob.Artisan.name} again for ${lastJob.serviceType}?`, [
+            { id: 'yes', title: '✅ Same Artisan' },
+            { id: 'new', title: '🔄 New Service' },
+          ]);
           session.step = 'awaiting_repeat';
           break;
         }
@@ -233,16 +235,18 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
     }
 
     case 'awaiting_repeat': {
-      const text = (message.text?.body || '').toLowerCase().trim();
-      if (text === 'yes' && session.lastArtisanId) {
+      const choice = message.interactive?.button_reply?.id || (message.text?.body || '').toLowerCase().trim();
+      if (choice === 'yes' && session.lastArtisanId) {
         session.serviceType = session.lastServiceType;
         session.repeatArtisanId = session.lastArtisanId;
         await sendMessage(from, 'Please describe the problem:');
         session.step = 'awaiting_description';
         break;
       }
+      // "new" or anything else → show service menu
+      await sendInteractiveList(from, 'What service do you need?', 'Choose Service', [{ title: 'Services', rows: SERVICE_MENU }]);
       session.step = 'awaiting_service';
-      return handleCustomerFlow(from, message, session);
+      break;
     }
 
     case 'awaiting_service': {
@@ -336,10 +340,16 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
         const trackingMsg = artisan.sharingLocation && artisan.liveLocation
           ? `\n📍 Live tracking: ${artisan.name} is sharing their location`
           : '';
-        await sendMessage(from, `✅ Estimated cost: ${estimate}\n\nWe've found a verified artisan for you:\n👤 ${artisan.name}\n⭐ Rating: ${artisan.rating}/5${trackingMsg}\n\n📞 Phone will be shared once they accept.\n\nYour referral code: ${customer.referralCode}\nShare it with friends for ₦1,000 off!\n\nReply "cancel" to cancel, "problem" to report an issue, or "track" for artisan location.`);
+        await sendButtons(from, `✅ Estimated cost: ${estimate}\n\nWe've found a verified artisan for you:\n👤 ${artisan.name}\n⭐ Rating: ${artisan.rating}/5${trackingMsg}\n\n📞 Phone will be shared once they accept.`, [
+          { id: 'cancel', title: '❌ Cancel' },
+          { id: 'track', title: '📍 Track' },
+        ]);
         if (artisan.whatsappId) {
           const urgency = session.emergency ? '🚨 EMERGENCY ' : '';
-          await sendMessage(artisan.whatsappId, `🔔 ${urgency}New job!\nService: ${session.serviceType}\nProblem: ${session.description}\nEstimate: ${estimate}\n\nReply "accept" or "decline"`);
+          await sendButtons(artisan.whatsappId, `🔔 ${urgency}New job!\nService: ${session.serviceType}\nProblem: ${session.description}\nEstimate: ${estimate}`, [
+            { id: 'accept', title: '✅ Accept' },
+            { id: 'decline', title: '❌ Decline' },
+          ]);
         }
       } else {
         await sendMessage(from, `✅ Estimated cost: ${estimate}\n\nWe're searching for an available artisan near you. We'll notify you within 30 minutes.`);
@@ -356,7 +366,7 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
     }
 
     case 'awaiting_quotes': {
-      const text = (message.text?.body || '').toLowerCase().trim();
+      const text = (message.interactive?.button_reply?.id || message.text?.body || '').toLowerCase().trim();
       if (text === 'quotes') {
         const quotes = await getQuotesForRequest(session.requestId!);
         if (quotes.length === 0) {
@@ -409,7 +419,7 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
     }
 
     case 'active_job': {
-      const text = (message.text?.body || '').toLowerCase().trim();
+      const text = (message.interactive?.button_reply?.id || message.text?.body || '').toLowerCase().trim();
       if (text === 'cancel') {
         await ServiceRequest.update({ status: 'cancelled' }, { where: { id: session.requestId } });
         await sendMessage(from, 'Your request has been cancelled. Send "Hi" to start again.');
@@ -447,7 +457,7 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
         const req = await ServiceRequest.findByPk(session.requestId!, { include: [Artisan] });
         const art = req?.Artisan;
         if (art?.sharingLocation && art.liveLocation) {
-          await sendMessage(from, `📍 ${art.name}'s last location:\nhttps://maps.google.com/?q=${art.liveLocation.lat},${art.liveLocation.lng}`);
+          await sendLocation(from, art.liveLocation.lat, art.liveLocation.lng, `📍 ${art.name}`, 'Live location');
         } else {
           await sendMessage(from, 'Artisan is not sharing their location right now.');
         }
