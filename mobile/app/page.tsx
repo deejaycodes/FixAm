@@ -28,7 +28,11 @@ export default function App() {
   const logout = () => { setToken(null); setUser(null); localStorage.removeItem('fixam_auth'); setScreen('home'); };
   const nav = (s: string, p?: any) => { setScreen(s); if (p) setParams(p); window.scrollTo(0, 0); };
 
-  if (!token) return <Login onLogin={login} />;
+  // Guest guard — redirect to login for screens that need auth
+  const needsAuth = ['activity', 'profile', 'status'].includes(screen);
+  if (needsAuth && !token) {
+    return <Login onLogin={(t, u) => { login(t, u); /* stay on intended screen */ }} />;
+  }
 
   const isDetail = ['new', 'status'].includes(screen);
 
@@ -36,9 +40,9 @@ export default function App() {
     <div className="max-w-md mx-auto min-h-screen flex flex-col bg-gray-50/50 relative">
       <div className="flex-1 overflow-y-auto no-scrollbar" style={{ paddingBottom: 80 }}>
         {screen === 'home' && <Home nav={nav} token={token} user={user} />}
-        {screen === 'new' && <NewRequest nav={nav} token={token} params={params} />}
-        {screen === 'status' && <Status nav={nav} token={token} params={params} />}
-        {screen === 'activity' && <Activity nav={nav} token={token} />}
+        {screen === 'new' && <NewRequest nav={nav} token={token} user={user} params={params} onNeedAuth={login} />}
+        {screen === 'status' && <Status nav={nav} token={token!} params={params} />}
+        {screen === 'activity' && <Activity nav={nav} token={token!} />}
         {screen === 'profile' && <Profile user={user} logout={logout} />}
       </div>
 

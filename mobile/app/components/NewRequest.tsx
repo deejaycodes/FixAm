@@ -2,13 +2,19 @@
 import { useState } from 'react';
 import { api } from '../lib';
 
-export default function NewRequest({ nav, token, params }: { nav: (s: string, p?: any) => void; token: string; params: any }) {
+export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
+  nav: (s: string, p?: any) => void; token: string | null; user: any; params: any;
+  onNeedAuth: (token: string, user: any) => void;
+}) {
   const [desc, setDesc] = useState('');
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [authErr, setAuthErr] = useState('');
 
-  const submit = async () => {
-    if (!desc.trim()) return;
+  const doSubmit = async (t: string) => {
     setLoading(true);
     try {
       let loc = { lat: 6.5244, lng: 3.3792 };
@@ -22,11 +28,34 @@ export default function NewRequest({ nav, token, params }: { nav: (s: string, p?
       const res = await api('/api/requests', {
         method: 'POST',
         body: JSON.stringify({ serviceType: params.serviceType, description: fullDesc, location: loc, emergency: params.serviceType === 'emergency' }),
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${t}` },
       });
       nav('status', { requestId: res.id });
     } catch (e: any) { alert(e.message); }
     setLoading(false);
+  };
+
+  const submit = async () => {
+    if (!desc.trim()) return;
+    if (token) return doSubmit(token);
+    setShowAuth(true);
+  };
+
+  const quickRegister = async () => {
+    if (!phone.trim() || phone.length < 10) { setAuthErr('Enter a valid phone number'); return; }
+    setAuthErr('');
+    setLoading(true);
+    try {
+      // Try login first, fall back to register
+      let res;
+      try {
+        res = await api('/api/customer/login', { method: 'POST', body: JSON.stringify({ phone: phone.trim() }) });
+      } catch {
+        res = await api('/api/customer/register', { method: 'POST', body: JSON.stringify({ phone: phone.trim(), name: name.trim() || undefined }) });
+      }
+      onNeedAuth(res.token, res.customer);
+      await doSubmit(res.token);
+    } catch (e: any) { setAuthErr(e.message); setLoading(false); }
   };
 
   return (
@@ -57,15 +86,38 @@ export default function NewRequest({ nav, token, params }: { nav: (s: string, p?
         <span className="text-xs text-green-700 font-medium">📍 Using your current location</span>
       </div>
 
-      <button onClick={submit} disabled={loading || !desc.trim()}
-        className="w-full bg-teal-600 text-white rounded-2xl py-4 font-bold text-sm mt-6 disabled:opacity-40 active:scale-[0.98] transition shadow-lg shadow-teal-600/20">
-        {loading ? (
-          <span className="flex items-center justify-center gap-2">
-            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            Finding artisan...
-          </span>
-        ) : 'Find Artisan →'}
-      </button>
+      {showAuth && !token && (
+        <div className="mt-5 bg-white border border-gray-200 rounded-2xl p-4 shadow-sm animate-in">
+          <p className="text-sm font-semibold text-gray-800 mb-3">Quick sign up to continue</p>
+          <input className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-teal-200 mb-2 placeholder-gray-400"
+            placeholder="Your name (optional)" value={name} onChange={e => setName(e.target.value)} />
+          <input className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-teal-200 placeholder-gray-400"
+            placeholder="Phone number *" type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && quickRegister()} />
+          {authErr && <p className="text-red-500 text-xs mt-2">{authErr}</p>}
+          <button onClick={quickRegister} disabled={loading}
+            className="w-full bg-teal-600 text-white rounded-xl py-3 font-bold text-sm mt-3 disabled:opacity-40 active:scale-[0.98] transition">
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Finding artisan...
+              </span>
+            ) : 'Continue & Find Artisan →'}
+          </button>
+        </div>
+      )}
+
+      {!showAuth && (
+        <button onClick={submit} disabled={loading || !desc.trim()}
+          className="w-full bg-teal-600 text-white rounded-2xl py-4 font-bold text-sm mt-6 disabled:opacity-40 active:scale-[0.98] transition shadow-lg shadow-teal-600/20">
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Finding artisan...
+            </span>
+          ) : 'Find Artisan →'}
+        </button>
+      )}
     </div>
   );
 }

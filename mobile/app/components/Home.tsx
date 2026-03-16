@@ -4,13 +4,14 @@ import { api, services, statusMap, pillColor } from '../lib';
 
 const promos = ['🛡️ Job Guarantee on every booking', '⚡ Emergency? Get help in 15min', '💰 Refer friends, earn ₦1,000'];
 
-export default function Home({ nav, token, user }: { nav: (s: string, p?: any) => void; token: string; user: any }) {
+export default function Home({ nav, token, user }: { nav: (s: string, p?: any) => void; token: string | null; user: any }) {
   const [recent, setRecent] = useState<any>(null);
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!token) return;
     api('/api/requests/mine', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => { if (r.length > 0) setRecent(r[0]); }).catch(() => {});
   }, [token]);
