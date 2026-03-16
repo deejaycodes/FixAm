@@ -431,6 +431,15 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
         return;
       }
       if (text === 'cancel') {
+        const req = await ServiceRequest.findByPk(session.requestId!, { include: [Artisan] });
+        if (req?.status === 'accepted' || req?.status === 'in_progress') {
+          await sendMessage(from, `The artisan is already on the way. Please contact them directly:\n📞 ${req.Artisan?.phone}\n\nIf there's a problem, reply "problem".`);
+          return;
+        }
+        // Notify artisan if assigned
+        if (req?.Artisan?.whatsappId) {
+          await sendMessage(req.Artisan.whatsappId, '⚠️ The customer has cancelled this job.');
+        }
         await ServiceRequest.update({ status: 'cancelled' }, { where: { id: session.requestId } });
         await sendMessage(from, 'Your request has been cancelled. Send "Hi" to start again.');
         await deleteSession(from);
