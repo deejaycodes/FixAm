@@ -23,15 +23,16 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
   return (
     <div className="animate-in pb-4">
       <div className="px-5 pt-14 pb-4 bg-gradient-to-b from-teal-50 to-gray-50">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-gray-500 text-xs font-medium">Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}</p>
-            <h2 className="text-xl font-bold text-gray-900 mt-0.5">{user?.name || 'there'} 👋</h2>
+        {token && user?.name ? (
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-teal-600 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-md">
+              {user.name[0].toUpperCase()}
+            </div>
+            <p className="text-lg font-bold text-gray-900">Hi, {user.name.split(' ')[0]} 👋</p>
           </div>
-          <div className="w-10 h-10 bg-teal-600 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-md">
-            {(user?.name || 'U')[0].toUpperCase()}
-          </div>
-        </div>
+        ) : (
+          <h2 className="text-2xl font-extrabold text-gray-900 mb-4 pt-1">What needs fixing?</h2>
+        )}
         <div className="relative">
           <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           <input ref={inputRef}
