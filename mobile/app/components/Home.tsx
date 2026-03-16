@@ -76,10 +76,10 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
         <div className="grid grid-cols-3 gap-3">
           {services.map(s => (
             <button key={s.id} onClick={() => nav('new', { serviceType: s.id, serviceName: s.name, serviceIcon: s.icon })}
-              className={`flex flex-col items-center p-4 rounded-2xl border-2 ${s.border} ${s.bg} shadow-sm active:scale-95 transition`}>
-              <span className="text-3xl mb-2">{s.icon}</span>
-              <span className="font-bold text-xs text-gray-900">{s.name}</span>
-              <span className="text-[10px] text-gray-600 mt-0.5">{s.desc}</span>
+              className={`flex flex-col items-center p-4 rounded-2xl ${s.bg} shadow-md active:scale-95 transition`}>
+              <span className="text-3xl mb-2 drop-shadow">{s.icon}</span>
+              <span className="font-bold text-xs text-white">{s.name}</span>
+              <span className="text-[10px] text-white/70 mt-0.5">{s.desc}</span>
             </button>
           ))}
         </div>
