@@ -58,9 +58,9 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
         </div>
       </div>
 
-      <div className="px-5 mt-4 flex gap-3 overflow-x-auto no-scrollbar">
+      <div className="px-5 mt-4 flex gap-2">
         {promos.map(p => (
-          <div key={p} className="flex-shrink-0 bg-teal-600/10 border border-teal-200/50 rounded-xl px-4 py-3 text-xs font-medium text-teal-700 whitespace-nowrap">{p}</div>
+          <div key={p} className="flex-1 bg-teal-600/10 border border-teal-200/50 rounded-xl px-3 py-2.5 text-[10px] font-semibold text-teal-700 text-center leading-tight">{p}</div>
         ))}
       </div>
 

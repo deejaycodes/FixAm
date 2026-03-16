@@ -90,14 +90,14 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">Services we cover</h2>
-            <p className="text-gray-400 text-lg">Home and office — we handle it all.</p>
+            <p className="text-gray-500 text-lg">Home and office — we handle it all.</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {services.map(s => (
-              <div key={s.name} className="group border border-gray-150 rounded-2xl p-6 hover:border-primary/40 hover:bg-teal-50/30 transition-all cursor-pointer">
+              <div key={s.name} className="group border border-gray-200 rounded-2xl p-6 hover:border-primary/40 hover:bg-teal-50/30 transition-all cursor-pointer bg-white shadow-sm">
                 <div className="text-3xl mb-3">{s.icon}</div>
                 <h3 className="text-lg font-bold mb-1 text-gray-900">{s.name}</h3>
-                <p className="text-gray-400 text-sm">{s.desc}</p>
+                <p className="text-gray-600 text-sm">{s.desc}</p>
               </div>
             ))}
           </div>
@@ -109,14 +109,14 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">How it works</h2>
-            <p className="text-gray-400 text-lg">Three steps. That&apos;s it.</p>
+            <p className="text-gray-500 text-lg">Three steps. That&apos;s it.</p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {steps.map(s => (
               <div key={s.num} className="bg-white rounded-2xl p-8 border border-gray-100">
                 <div className="text-sm font-bold text-primary mb-4">{s.num}</div>
                 <h3 className="text-xl font-bold mb-2 text-gray-900">{s.title}</h3>
-                <p className="text-gray-400 leading-relaxed">{s.desc}</p>
+                <p className="text-gray-500 leading-relaxed">{s.desc}</p>
               </div>
             ))}
           </div>
@@ -128,14 +128,14 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">Built different</h2>
-            <p className="text-gray-400 text-lg">Why thousands trust FixAm over random artisan calls.</p>
+            <p className="text-gray-500 text-lg">Why thousands trust FixAm over random artisan calls.</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {features.map(f => (
-              <div key={f.title} className="p-6 rounded-2xl border border-gray-100 hover:border-primary/30 transition">
+              <div key={f.title} className="p-6 rounded-2xl border border-gray-200 hover:border-primary/30 transition bg-white shadow-sm">
                 <div className="w-8 h-8 bg-teal-100 text-primary rounded-lg flex items-center justify-center text-sm font-bold mb-4">{f.icon}</div>
                 <h3 className="font-bold mb-1.5 text-gray-900">{f.title}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">{f.desc}</p>
+                <p className="text-gray-600 text-sm leading-relaxed">{f.desc}</p>
               </div>
             ))}
           </div>
@@ -173,7 +173,7 @@ export default function Home() {
       <section id="download" className="py-24 px-6 bg-gradient-to-br from-teal-50 to-white">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">Get the app</h2>
-          <p className="text-gray-400 text-lg mb-10">Coming soon to iOS and Android.</p>
+          <p className="text-gray-500 text-lg mb-10">Coming soon to iOS and Android.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <div className="bg-gray-900 text-white px-6 py-4 rounded-xl flex items-center gap-3 opacity-60">
               <span className="text-2xl">🍎</span>
