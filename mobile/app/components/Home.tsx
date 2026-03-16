@@ -24,16 +24,19 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
     <div className="animate-in pb-4 bg-white min-h-screen">
       {/* Header */}
       <div className="px-5 pt-14 pb-5 bg-gray-900">
-        {token && user?.name ? (
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-teal-500 rounded-full flex items-center justify-center text-sm font-bold text-white">
-              {user.name[0].toUpperCase()}
+        <div className="flex items-center justify-between mb-4">
+          {token && user?.name ? (
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-teal-500 rounded-full flex items-center justify-center text-sm font-bold text-white">
+                {user.name[0].toUpperCase()}
+              </div>
+              <p className="text-lg font-bold text-white">Hi, {user.name.split(' ')[0]} 👋</p>
             </div>
-            <p className="text-lg font-bold text-white">Hi, {user.name.split(' ')[0]} 👋</p>
-          </div>
-        ) : (
-          <h2 className="text-2xl font-extrabold text-white mb-4 pt-1">What needs fixing?</h2>
-        )}
+          ) : (
+            <h2 className="text-2xl font-extrabold text-white pt-1">What needs fixing?</h2>
+          )}
+          <span className="text-lg font-extrabold text-white">Fix<span className="text-teal-400">Am</span></span>
+        </div>
         <div className="relative">
           <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           <input ref={inputRef}
@@ -73,10 +76,10 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
         <div className="grid grid-cols-3 gap-3">
           {services.map(s => (
             <button key={s.id} onClick={() => nav('new', { serviceType: s.id, serviceName: s.name, serviceIcon: s.icon })}
-              className="flex flex-col items-center p-4 rounded-2xl border-2 border-gray-100 bg-white shadow-sm active:scale-95 active:border-teal-400 transition">
-              <div className={`w-12 h-12 ${s.bg} rounded-xl flex items-center justify-center text-2xl mb-2`}>{s.icon}</div>
+              className={`flex flex-col items-center p-4 rounded-2xl border-2 ${s.border} ${s.bg} shadow-sm active:scale-95 transition`}>
+              <span className="text-3xl mb-2">{s.icon}</span>
               <span className="font-bold text-xs text-gray-900">{s.name}</span>
-              <span className="text-[10px] text-gray-500 mt-0.5">{s.desc}</span>
+              <span className="text-[10px] text-gray-600 mt-0.5">{s.desc}</span>
             </button>
           ))}
         </div>
