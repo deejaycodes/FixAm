@@ -399,6 +399,12 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
     }
 
     case 'awaiting_referral': {
+      const btnId = message.interactive?.button_reply?.id;
+      if (btnId) {
+        // User tapped a button from the match card — skip referral, handle as active_job
+        session.step = 'active_job';
+        return handleCustomerFlow(from, message, session);
+      }
       const text = (message.text?.body || '').trim();
       if (text.toLowerCase() !== 'skip') {
         const customer = await Customer.findOne({ where: { whatsappId: from } });
