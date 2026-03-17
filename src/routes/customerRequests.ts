@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { ServiceRequest, Artisan, Customer } from '../models';
+import { ServiceRequest, Artisan, Customer, Quote, Message } from '../models';
 import { findBestArtisan } from '../services/matching';
 import { estimatePrice, applyLoyaltyDiscount } from '../services/pricing';
 import { sendMessage, sendButtons } from '../services/whatsapp';
@@ -10,7 +10,7 @@ const router = Router();
 // Create a new service request
 router.post('/', async (req: Request, res: Response) => {
   const customerId = (req as any).customerId;
-  const { serviceType, description, location, emergency } = req.body;
+  const { serviceType, description, location, emergency, scheduledAt } = req.body;
 
   const priceRange = estimatePrice(serviceType, description, emergency);
   const request = await ServiceRequest.create({
@@ -19,6 +19,7 @@ router.post('/', async (req: Request, res: Response) => {
     location,
     estimatedPrice: priceRange ? priceRange.min * 100 : undefined,
     CustomerId: customerId,
+    scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
   });
 
   // Auto-match
@@ -52,15 +53,27 @@ router.get('/mine', async (req: Request, res: Response) => {
 
 // Get single request
 router.get('/:id', async (req: Request, res: Response) => {
-  const request = await ServiceRequest.findByPk(req.params.id as string, { include: [Artisan] });
+  const request = await ServiceRequest.findByPk(req.params.id as string, { include: [Artisan, { model: Quote, include: [Artisan] }] });
   if (!request || request.CustomerId !== (req as any).customerId) {
     res.status(404).json({ error: 'Not found' }); return;
   }
-  // Hide artisan phone until accepted
   const json = request.toJSON() as any;
-  if (json.Artisan && request.status !== 'accepted' && request.status !== 'in_progress' && request.status !== 'completed') {
-    delete json.Artisan.phone;
-    delete json.Artisan.whatsappId;
+  // Include artisan portfolio
+  if (json.Artisan) {
+    json.Artisan.portfolioPhotos = json.Artisan.portfolioPhotos || [];
+    if (request.status !== 'accepted' && request.status !== 'in_progress' && request.status !== 'completed') {
+      delete json.Artisan.phone;
+      delete json.Artisan.whatsappId;
+    }
+  }
+  // ETA: if artisan is sharing location, calculate distance-based ETA
+  if (json.Artisan?.liveLocation && request.location && (request.status === 'accepted' || request.status === 'in_progress')) {
+    const R = 6371;
+    const dLat = (request.location.lat - json.Artisan.liveLocation.lat) * Math.PI / 180;
+    const dLng = (request.location.lng - json.Artisan.liveLocation.lng) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(json.Artisan.liveLocation.lat*Math.PI/180) * Math.cos(request.location.lat*Math.PI/180) * Math.sin(dLng/2)**2;
+    const km = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    json.eta = Math.max(5, Math.round(km / 25 * 60)); // ~25km/h Lagos traffic, min 5 min
   }
   res.json(json);
 });
@@ -133,6 +146,52 @@ router.post('/:id/cancel', async (req: Request, res: Response) => {
     await sendMessage(request.Artisan.whatsappId, '⚠️ The customer has cancelled this job.');
   }
   await request.update({ status: 'cancelled' });
+  res.json({ success: true });
+});
+
+// Messages — get
+router.get('/:id/messages', async (req: Request, res: Response) => {
+  const request = await ServiceRequest.findByPk(req.params.id as string);
+  if (!request || request.CustomerId !== (req as any).customerId) {
+    res.status(404).json({ error: 'Not found' }); return;
+  }
+  const messages = await Message.findAll({ where: { ServiceRequestId: req.params.id }, order: [['createdAt', 'ASC']] });
+  res.json(messages);
+});
+
+// Messages — send
+router.post('/:id/messages', async (req: Request, res: Response) => {
+  const request = await ServiceRequest.findByPk(req.params.id as string, { include: [Artisan] });
+  if (!request || request.CustomerId !== (req as any).customerId) {
+    res.status(404).json({ error: 'Not found' }); return;
+  }
+  const { text } = req.body;
+  if (!text?.trim()) { res.status(400).json({ error: 'Text required' }); return; }
+  const msg = await Message.create({ text: text.trim(), sender: 'customer', ServiceRequestId: request.id });
+  // Forward to artisan via WhatsApp
+  if (request.Artisan?.whatsappId) {
+    await sendMessage(request.Artisan.whatsappId, `💬 Customer: ${text.trim()}`).catch(() => {});
+  }
+  res.status(201).json(msg);
+});
+
+// Accept a quote
+router.post('/:id/quotes/:quoteId/accept', async (req: Request, res: Response) => {
+  const request = await ServiceRequest.findByPk(req.params.id as string);
+  if (!request || request.CustomerId !== (req as any).customerId) {
+    res.status(404).json({ error: 'Not found' }); return;
+  }
+  const quote = await Quote.findByPk(req.params.quoteId as string, { include: [Artisan] });
+  if (!quote || quote.ServiceRequestId !== request.id) {
+    res.status(404).json({ error: 'Quote not found' }); return;
+  }
+  // Accept this quote, reject others
+  await Quote.update({ status: 'rejected' }, { where: { ServiceRequestId: request.id } });
+  await quote.update({ status: 'accepted' });
+  await request.update({ ArtisanId: quote.ArtisanId, estimatedPrice: quote.price, status: 'assigned' });
+  if ((quote as any).Artisan?.whatsappId) {
+    await sendMessage((quote as any).Artisan.whatsappId, '✅ Your quote was accepted! Please head to the customer.').catch(() => {});
+  }
   res.json({ success: true });
 });
 

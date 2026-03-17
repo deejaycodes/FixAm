@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api, statusMap } from '../lib';
 
 const stepLabels = ['Requested', 'Matched', 'On the way', 'Done'];
@@ -25,8 +25,11 @@ function Stepper({ step }: { step: number }) {
 export default function Status({ nav, token, params }: { nav: (s: string, p?: any) => void; token: string; params: any }) {
   const [req, setReq] = useState<any>(null);
   const [hoverStar, setHoverStar] = useState(0);
-  const [note, setNote] = useState('');
-  const [noteSaved, setNoteSaved] = useState(false);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [msgText, setMsgText] = useState('');
+  const [showChat, setShowChat] = useState(false);
+  const [showPortfolio, setShowPortfolio] = useState(false);
+  const chatEnd = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const load = () => api(`/api/requests/${params.requestId}`, { headers: { Authorization: `Bearer ${token}` } }).then(setReq).catch(() => {});
@@ -34,6 +37,35 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
     const i = setInterval(load, 15000);
     return () => clearInterval(i);
   }, [params.requestId, token]);
+
+  useEffect(() => {
+    if (!showChat) return;
+    const load = () => api(`/api/requests/${params.requestId}/messages`, { headers: { Authorization: `Bearer ${token}` } }).then(setMessages).catch(() => {});
+    load();
+    const i = setInterval(load, 5000);
+    return () => clearInterval(i);
+  }, [showChat, params.requestId, token]);
+
+  useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  const sendMsg = async () => {
+    if (!msgText.trim()) return;
+    await api(`/api/requests/${params.requestId}/messages`, {
+      method: 'POST', body: JSON.stringify({ text: msgText.trim() }),
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setMsgText('');
+    const msgs = await api(`/api/requests/${params.requestId}/messages`, { headers: { Authorization: `Bearer ${token}` } });
+    setMessages(msgs);
+  };
+
+  const acceptQuote = async (quoteId: string) => {
+    await api(`/api/requests/${params.requestId}/quotes/${quoteId}/accept`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` },
+    });
+    const updated = await api(`/api/requests/${params.requestId}`, { headers: { Authorization: `Bearer ${token}` } });
+    setReq(updated);
+  };
 
   if (!req) return (
     <div className="px-5 pt-16 space-y-4">
@@ -47,6 +79,57 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
   const art = req.Artisan;
   const canContact = req.status === 'accepted' || req.status === 'in_progress';
   const isActive = ['pending', 'assigned', 'accepted', 'in_progress'].includes(req.status);
+  const quotes = req.Quotes?.filter((q: any) => q.status === 'pending') || [];
+  const portfolio = art?.portfolioPhotos || [];
+
+  // Chat overlay
+  if (showChat) return (
+    <div className="animate-in flex flex-col h-screen bg-white">
+      <div className="px-5 pt-14 pb-3 bg-gray-900 flex items-center gap-3">
+        <button onClick={() => setShowChat(false)} className="text-white text-lg">←</button>
+        <div className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
+          {art?.name?.[0] || 'A'}
+        </div>
+        <div>
+          <p className="text-sm font-bold text-white">{art?.name || 'Artisan'}</p>
+          <p className="text-[10px] text-gray-400">In-app messages</p>
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+        {messages.length === 0 && <p className="text-center text-gray-400 text-xs mt-8">No messages yet. Say hello!</p>}
+        {messages.map((m: any) => (
+          <div key={m.id} className={`flex ${m.sender === 'customer' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl text-sm ${m.sender === 'customer' ? 'bg-teal-600 text-white rounded-br-md' : 'bg-gray-100 text-gray-900 rounded-bl-md'}`}>
+              {m.text}
+              <p className={`text-[9px] mt-1 ${m.sender === 'customer' ? 'text-teal-200' : 'text-gray-400'}`}>
+                {new Date(m.createdAt).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </div>
+          </div>
+        ))}
+        <div ref={chatEnd} />
+      </div>
+      <div className="px-4 pb-safe pt-2 border-t border-gray-100 flex gap-2">
+        <input className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-teal-200"
+          placeholder="Type a message..." value={msgText} onChange={e => setMsgText(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && sendMsg()} />
+        <button onClick={sendMsg} className="bg-teal-600 text-white rounded-xl px-4 font-bold text-sm active:scale-95 transition">Send</button>
+      </div>
+    </div>
+  );
+
+  // Portfolio overlay
+  if (showPortfolio && portfolio.length > 0) return (
+    <div className="animate-in px-5 pt-16">
+      <button onClick={() => setShowPortfolio(false)} className="text-sm text-gray-500 font-medium mb-4">← Back</button>
+      <h2 className="text-lg font-bold text-gray-900 mb-4">{art?.name}&apos;s Past Work</h2>
+      <div className="grid grid-cols-2 gap-2">
+        {portfolio.map((p: string, i: number) => (
+          <img key={i} src={p} className="w-full aspect-square object-cover rounded-xl border border-gray-100" />
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div className="animate-in px-5 pt-16">
@@ -54,10 +137,58 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
         <span>{s.icon}</span> {s.label}
       </div>
       <h2 className="text-xl font-bold text-gray-900 capitalize mb-1">{req.serviceType?.replace('_', ' ')}</h2>
-      {req.description && <p className="text-sm text-gray-500 mb-6">{req.description}</p>}
+      {req.description && <p className="text-sm text-gray-500 mb-2">{req.description}</p>}
+      {req.scheduledAt && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-4 inline-block">
+          📅 Scheduled: {new Date(req.scheduledAt).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' })}
+        </p>
+      )}
 
       {s.step >= 0 && <Stepper step={s.step} />}
 
+      {/* ETA */}
+      {req.eta && isActive && (
+        <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4 mb-4 flex items-center gap-3">
+          <span className="text-2xl">🚗</span>
+          <div>
+            <p className="text-sm font-bold text-teal-800">Arriving in ~{req.eta} min</p>
+            <p className="text-[10px] text-teal-600">Based on live location</p>
+          </div>
+        </div>
+      )}
+
+      {/* Multi-quote selection */}
+      {quotes.length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-sm font-bold text-gray-900 mb-2">💰 Quotes from artisans</h3>
+          <div className="space-y-2">
+            {quotes.map((q: any) => (
+              <div key={q.id} className="bg-white border border-gray-100 shadow-sm rounded-2xl p-4 flex items-center gap-3">
+                <div className="w-10 h-10 bg-teal-600 rounded-full flex items-center justify-center text-sm font-bold text-white">
+                  {q.Artisan?.name?.[0] || 'A'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-bold text-sm text-gray-900">{q.Artisan?.name}</p>
+                    {q.Artisan?.verified && <span className="text-[8px] bg-teal-100 text-teal-700 px-1 py-0.5 rounded-full font-semibold">✓</span>}
+                  </div>
+                  <p className="text-xs text-gray-500">⭐ {q.Artisan?.rating}/5 · {q.Artisan?.totalJobs} jobs</p>
+                  {q.message && <p className="text-xs text-gray-600 mt-1 truncate">{q.message}</p>}
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-teal-700">₦{(q.price / 100).toLocaleString()}</p>
+                  <button onClick={() => acceptQuote(q.id)}
+                    className="bg-teal-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg mt-1 active:scale-95 transition">
+                    Accept
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Artisan card */}
       {art && (
         <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 mb-4">
           <div className="flex items-center gap-3">
@@ -69,17 +200,39 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
                 <p className="font-bold text-gray-900">{art.name}</p>
                 {art.verified && <span className="text-[10px] bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded-full font-semibold">✓ Verified</span>}
               </div>
-              <p className="text-gray-500 text-xs mt-0.5">{'⭐'.repeat(Math.round(art.rating || 0))} {art.rating}/5</p>
+              <p className="text-gray-500 text-xs mt-0.5">{'⭐'.repeat(Math.round(art.rating || 0))} {art.rating}/5 · {art.totalJobs} jobs</p>
             </div>
           </div>
-          {canContact && art.phone && (
+
+          {/* Portfolio preview */}
+          {portfolio.length > 0 && (
+            <button onClick={() => setShowPortfolio(true)} className="w-full mt-3">
+              <div className="flex gap-1.5 overflow-hidden rounded-xl">
+                {portfolio.slice(0, 3).map((p: string, i: number) => (
+                  <img key={i} src={p} className="flex-1 h-16 object-cover rounded-lg border border-gray-100" />
+                ))}
+              </div>
+              <p className="text-[10px] text-teal-600 font-semibold mt-1.5">📸 View {portfolio.length} past work photos →</p>
+            </button>
+          )}
+
+          {/* Contact + Chat buttons */}
+          {canContact && (
             <div className="flex gap-2 mt-4">
-              <a href={`tel:${art.phone}`} className="flex-1 bg-teal-600 text-white rounded-xl py-2.5 text-center font-semibold text-sm active:scale-[0.98] transition shadow-md">
-                📞 Call
-              </a>
-              <a href={`https://wa.me/${art.phone}`} target="_blank" className="flex-1 bg-green-600 text-white rounded-xl py-2.5 text-center font-semibold text-sm active:scale-[0.98] transition shadow-md">
-                💬 WhatsApp
-              </a>
+              <button onClick={() => setShowChat(true)}
+                className="flex-1 bg-teal-600 text-white rounded-xl py-2.5 text-center font-semibold text-sm active:scale-[0.98] transition shadow-md">
+                💬 Chat
+              </button>
+              {art.phone && (
+                <a href={`tel:${art.phone}`} className="flex-1 bg-gray-100 text-gray-700 rounded-xl py-2.5 text-center font-semibold text-sm active:scale-[0.98] transition">
+                  📞 Call
+                </a>
+              )}
+              {art.phone && (
+                <a href={`https://wa.me/${art.phone}`} target="_blank" className="flex-1 bg-green-600 text-white rounded-xl py-2.5 text-center font-semibold text-sm active:scale-[0.98] transition shadow-md">
+                  WhatsApp
+                </a>
+              )}
             </div>
           )}
         </div>
@@ -89,21 +242,6 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
         <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4 flex items-center justify-between shadow-sm">
           <span className="text-sm text-gray-600">Estimated cost</span>
           <span className="font-bold text-lg text-gray-900">₦{(req.estimatedPrice / 100).toLocaleString()}</span>
-        </div>
-      )}
-
-      {isActive && (
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4 shadow-sm">
-          <label className="text-xs font-semibold text-gray-700 mb-2 block">Add a note for the artisan</label>
-          <div className="flex gap-2">
-            <input className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-teal-200 placeholder-gray-400"
-              placeholder="e.g. Gate code is 1234, ring doorbell..."
-              value={note} onChange={e => { setNote(e.target.value); setNoteSaved(false); }} />
-            <button onClick={() => { setNoteSaved(true); setTimeout(() => setNoteSaved(false), 2000); }}
-              className="bg-teal-600 text-white rounded-xl px-4 text-sm font-semibold active:scale-95 transition shadow-sm">
-              {noteSaved ? '✓' : 'Send'}
-            </button>
-          </div>
         </div>
       )}
 

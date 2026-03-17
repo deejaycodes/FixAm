@@ -5,7 +5,7 @@ import { api } from '../lib';
 const urgencyOptions = [
   { id: 'now', label: '🔴 Now', desc: 'ASAP' },
   { id: 'today', label: '🟡 Today', desc: 'Within hours' },
-  { id: 'flexible', label: '🟢 Flexible', desc: 'This week' },
+  { id: 'flexible', label: '🟢 Flexible', desc: 'Pick a date' },
 ];
 
 export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
@@ -18,6 +18,7 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
   const [address, setAddress] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [scheduledAt, setScheduledAt] = useState('');
   const [showAuth, setShowAuth] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [name, setName] = useState('');
@@ -51,7 +52,7 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
       ].filter(Boolean).join('\n\n');
       const res = await api('/api/requests', {
         method: 'POST',
-        body: JSON.stringify({ serviceType: params.serviceType, description: fullDesc, location: loc, emergency: urgency === 'now' || params.serviceType === 'emergency' }),
+        body: JSON.stringify({ serviceType: params.serviceType, description: fullDesc, location: loc, emergency: urgency === 'now' || params.serviceType === 'emergency', scheduledAt: scheduledAt || undefined }),
         headers: { Authorization: `Bearer ${t}` },
       });
       // Upload photos if any
@@ -94,6 +95,7 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
         <div className="flex justify-between"><span className="text-sm text-gray-500">Service</span><span className="text-sm font-bold text-gray-900">{params.serviceIcon} {params.serviceName}</span></div>
         <div className="flex justify-between"><span className="text-sm text-gray-500">Urgency</span><span className="text-sm font-bold text-gray-900">{urgencyOptions.find(u => u.id === urgency)?.label}</span></div>
         {address && <div className="flex justify-between"><span className="text-sm text-gray-500">Address</span><span className="text-sm font-bold text-gray-900 text-right max-w-[60%]">{address}</span></div>}
+        {scheduledAt && <div className="flex justify-between"><span className="text-sm text-gray-500">Scheduled</span><span className="text-sm font-bold text-gray-900">{new Date(scheduledAt).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' })}</span></div>}
         {photos.length > 0 && <div className="flex justify-between"><span className="text-sm text-gray-500">Photos</span><span className="text-sm font-bold text-gray-900">{photos.length} attached</span></div>}
         <div className="border-t border-gray-200 pt-3"><p className="text-sm text-gray-700">{desc}</p></div>
         {note && <p className="text-xs text-gray-500 italic">{note}</p>}
@@ -130,6 +132,12 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
           </button>
         ))}
       </div>
+
+      {urgency === 'flexible' && (
+        <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)}
+          min={new Date().toISOString().slice(0, 16)}
+          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-teal-200 mb-5 shadow-sm" />
+      )}
 
       <label className="text-sm font-semibold text-gray-800 mb-2 block">What&apos;s the problem?</label>
       <textarea className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-300 min-h-[100px] resize-none placeholder-gray-400 shadow-sm"

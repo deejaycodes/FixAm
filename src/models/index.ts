@@ -37,6 +37,7 @@ interface ArtisanAttributes {
   bio: string | null;
   sharingLocation: boolean;
   liveLocation: { lat: number; lng: number } | null;
+  portfolioPhotos: string[];
 }
 
 interface ServiceRequestAttributes {
@@ -55,6 +56,7 @@ interface ServiceRequestAttributes {
   guaranteeUsed: boolean;
   CustomerId: string | null;
   ArtisanId: string | null;
+  scheduledAt: Date | null;
 }
 
 interface QuoteAttributes {
@@ -76,6 +78,14 @@ interface PaymentAttributes {
   createdAt?: Date;
 }
 
+interface MessageAttributes {
+  id: string;
+  text: string;
+  sender: 'customer' | 'artisan';
+  ServiceRequestId: string;
+  createdAt?: Date;
+}
+
 interface AdminUserAttributes {
   id: string;
   email: string;
@@ -86,11 +96,12 @@ interface AdminUserAttributes {
 // ── Creation attributes (id auto-generated) ────────────────────
 
 type CustomerCreation = Optional<CustomerAttributes, 'id' | 'name' | 'whatsappId' | 'location' | 'referralCode' | 'referredBy' | 'discountUsed' | 'subscriptionTier' | 'subscriptionExpiresAt'>;
-type ArtisanCreation = Optional<ArtisanAttributes, 'id' | 'whatsappId' | 'location' | 'rating' | 'totalJobs' | 'verified' | 'available' | 'ninVerified' | 'referralCode' | 'referredBy' | 'priorityBoost' | 'paystackSubaccount' | 'profileSlug' | 'bio' | 'sharingLocation' | 'liveLocation'>;
-type ServiceRequestCreation = Optional<ServiceRequestAttributes, 'id' | 'description' | 'location' | 'estimatedPrice' | 'finalPrice' | 'status' | 'rating' | 'review' | 'completedAt' | 'discount' | 'photos' | 'guaranteeUsed' | 'CustomerId' | 'ArtisanId'>;
+type ArtisanCreation = Optional<ArtisanAttributes, 'id' | 'whatsappId' | 'location' | 'rating' | 'totalJobs' | 'verified' | 'available' | 'ninVerified' | 'referralCode' | 'referredBy' | 'priorityBoost' | 'paystackSubaccount' | 'profileSlug' | 'bio' | 'sharingLocation' | 'liveLocation' | 'portfolioPhotos'>;
+type ServiceRequestCreation = Optional<ServiceRequestAttributes, 'id' | 'description' | 'location' | 'estimatedPrice' | 'finalPrice' | 'status' | 'rating' | 'review' | 'completedAt' | 'discount' | 'photos' | 'guaranteeUsed' | 'CustomerId' | 'ArtisanId' | 'scheduledAt'>;
 type PaymentCreation = Optional<PaymentAttributes, 'id' | 'commission' | 'paystackRef' | 'status' | 'ServiceRequestId'>;
 type AdminUserCreation = Optional<AdminUserAttributes, 'id' | 'name'>;
 type QuoteCreation = Optional<QuoteAttributes, 'id' | 'message' | 'status'>;
+type MessageCreation = Optional<MessageAttributes, 'id'>;
 
 // ── Model classes ───────────────────────────────────────────────
 
@@ -127,6 +138,7 @@ class Artisan extends Model<ArtisanAttributes, ArtisanCreation> implements Artis
   declare bio: string | null;
   declare sharingLocation: boolean;
   declare liveLocation: { lat: number; lng: number } | null;
+  declare portfolioPhotos: string[];
 }
 
 class ServiceRequest extends Model<ServiceRequestAttributes, ServiceRequestCreation> implements ServiceRequestAttributes {
@@ -145,6 +157,7 @@ class ServiceRequest extends Model<ServiceRequestAttributes, ServiceRequestCreat
   declare guaranteeUsed: boolean;
   declare CustomerId: string | null;
   declare ArtisanId: string | null;
+  declare scheduledAt: Date | null;
   declare Customer?: Customer;
   declare Artisan?: Artisan;
   declare Quotes?: Quote[];
@@ -167,6 +180,14 @@ class Payment extends Model<PaymentAttributes, PaymentCreation> implements Payme
   declare paystackRef: string | null;
   declare status: 'pending' | 'paid' | 'failed';
   declare ServiceRequestId: string | null;
+}
+
+class Message extends Model<MessageAttributes, MessageCreation> implements MessageAttributes {
+  declare id: string;
+  declare text: string;
+  declare sender: 'customer' | 'artisan';
+  declare ServiceRequestId: string;
+  declare createdAt?: Date;
 }
 
 class AdminUser extends Model<AdminUserAttributes, AdminUserCreation> implements AdminUserAttributes {
@@ -211,6 +232,7 @@ Artisan.init({
   bio: { type: DataTypes.TEXT },
   sharingLocation: { type: DataTypes.BOOLEAN, defaultValue: false },
   liveLocation: { type: DataTypes.JSONB },
+  portfolioPhotos: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] },
 }, { sequelize });
 
 ServiceRequest.init({
@@ -229,6 +251,7 @@ ServiceRequest.init({
   guaranteeUsed: { type: DataTypes.BOOLEAN, defaultValue: false },
   CustomerId: { type: DataTypes.UUID },
   ArtisanId: { type: DataTypes.UUID },
+  scheduledAt: { type: DataTypes.DATE },
 }, { sequelize });
 
 Payment.init({
@@ -256,6 +279,13 @@ Quote.init({
   ArtisanId: { type: DataTypes.UUID, allowNull: false },
 }, { sequelize });
 
+Message.init({
+  id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+  text: { type: DataTypes.TEXT, allowNull: false },
+  sender: { type: DataTypes.ENUM('customer', 'artisan'), allowNull: false },
+  ServiceRequestId: { type: DataTypes.UUID, allowNull: false },
+}, { sequelize });
+
 // ── Relationships ───────────────────────────────────────────────
 
 Customer.hasMany(ServiceRequest);
@@ -268,6 +298,8 @@ ServiceRequest.hasMany(Quote);
 Quote.belongsTo(ServiceRequest);
 Artisan.hasMany(Quote);
 Quote.belongsTo(Artisan);
+ServiceRequest.hasMany(Message);
+Message.belongsTo(ServiceRequest);
 
-export { sequelize, Customer, Artisan, ServiceRequest, Payment, AdminUser, Quote };
-export type { CustomerAttributes, ArtisanAttributes, ServiceRequestAttributes, PaymentAttributes, AdminUserAttributes, QuoteAttributes };
+export { sequelize, Customer, Artisan, ServiceRequest, Payment, AdminUser, Quote, Message };
+export type { CustomerAttributes, ArtisanAttributes, ServiceRequestAttributes, PaymentAttributes, AdminUserAttributes, QuoteAttributes, MessageAttributes };
