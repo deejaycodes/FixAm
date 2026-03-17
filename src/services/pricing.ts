@@ -1,4 +1,4 @@
-export type ServiceType = 'plumbing' | 'electrical' | 'ac_repair' | 'generator' | 'carpentry';
+export type ServiceType = 'plumbing' | 'electrical' | 'ac_repair' | 'generator' | 'carpentry' | 'cleaning' | 'fumigation' | 'makeup' | 'mechanic' | 'painting' | 'tiling' | 'welding' | 'cctv';
 
 interface PriceRange {
   min: number;
@@ -6,11 +6,19 @@ interface PriceRange {
 }
 
 const PRICE_TABLE: Record<ServiceType, PriceRange> = {
-  plumbing:   { min: 10000, max: 35000 },
-  electrical: { min: 8000,  max: 30000 },
-  ac_repair:  { min: 15000, max: 50000 },
-  generator:  { min: 10000, max: 45000 },
-  carpentry:  { min: 12000, max: 40000 },
+  plumbing:    { min: 10000, max: 35000 },
+  electrical:  { min: 8000,  max: 30000 },
+  ac_repair:   { min: 15000, max: 50000 },
+  generator:   { min: 10000, max: 45000 },
+  carpentry:   { min: 12000, max: 40000 },
+  cleaning:    { min: 15000, max: 50000 },
+  fumigation:  { min: 20000, max: 60000 },
+  makeup:      { min: 30000, max: 150000 },
+  mechanic:    { min: 15000, max: 80000 },
+  painting:    { min: 10000, max: 40000 },
+  tiling:      { min: 15000, max: 40000 },
+  welding:     { min: 10000, max: 50000 },
+  cctv:        { min: 30000, max: 100000 },
 };
 
 // Keywords that push estimate toward the high end

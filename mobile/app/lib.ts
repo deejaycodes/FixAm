@@ -47,8 +47,8 @@ export function setCountry(code: CountryCode) { localStorage.setItem(COUNTRY_KEY
 // ── Services (country-aware pricing) ────────────────────────────
 
 const pricing: Record<CountryCode, Record<string, string>> = {
-  NG: { plumbing: '₦5k', electrical: '₦4k', ac_repair: '₦8k', generator: '₦6k', carpentry: '₦7k', emergency: '₦10k' },
-  GH: { plumbing: 'GH₵80', electrical: 'GH₵60', ac_repair: 'GH₵150', generator: 'GH₵100', carpentry: 'GH₵120', emergency: 'GH₵200' },
+  NG: { plumbing: '₦5k', electrical: '₦4k', ac_repair: '₦8k', generator: '₦6k', carpentry: '₦7k', cleaning: '₦15k', fumigation: '₦20k', makeup: '₦30k', mechanic: '₦15k', painting: '₦10k', tiling: '₦15k', welding: '₦10k', cctv: '₦30k', emergency: '₦10k' },
+  GH: { plumbing: 'GH₵80', electrical: 'GH₵60', ac_repair: 'GH₵150', generator: 'GH₵100', carpentry: 'GH₵120', cleaning: 'GH₵200', fumigation: 'GH₵250', makeup: 'GH₵400', mechanic: 'GH₵200', painting: 'GH₵150', tiling: 'GH₵200', welding: 'GH₵150', cctv: 'GH₵400', emergency: 'GH₵200' },
 };
 
 export function getServices(country?: CountryCode) {
@@ -59,7 +59,15 @@ export function getServices(country?: CountryCode) {
     { id: 'electrical', icon: '⚡', name: 'Electrical', desc: 'Wiring & lights', bg: 'bg-amber-200', from: p.electrical },
     { id: 'ac_repair', icon: '❄️', name: 'AC Repair', desc: 'Cooling systems', bg: 'bg-blue-200', from: p.ac_repair },
     { id: 'generator', icon: '⚙️', name: 'Generator', desc: 'Power solutions', bg: 'bg-orange-200', from: p.generator },
+    { id: 'cleaning', icon: '🧹', name: 'Cleaning', desc: 'Home & deep clean', bg: 'bg-emerald-200', from: p.cleaning },
+    { id: 'fumigation', icon: '🪲', name: 'Fumigation', desc: 'Pest control', bg: 'bg-lime-200', from: p.fumigation },
+    { id: 'makeup', icon: '💄', name: 'Makeup', desc: 'Bridal & events', bg: 'bg-pink-200', from: p.makeup },
+    { id: 'mechanic', icon: '🚗', name: 'Mechanic', desc: 'Car repair', bg: 'bg-slate-200', from: p.mechanic },
+    { id: 'painting', icon: '🎨', name: 'Painting', desc: 'Interior & exterior', bg: 'bg-indigo-200', from: p.painting },
     { id: 'carpentry', icon: '🪚', name: 'Carpentry', desc: 'Wood & furniture', bg: 'bg-violet-200', from: p.carpentry },
+    { id: 'tiling', icon: '🧱', name: 'Tiling', desc: 'Floor & wall tiles', bg: 'bg-cyan-200', from: p.tiling },
+    { id: 'welding', icon: '🔩', name: 'Welding', desc: 'Gates & railings', bg: 'bg-gray-200', from: p.welding },
+    { id: 'cctv', icon: '📹', name: 'CCTV', desc: 'Security cameras', bg: 'bg-rose-200', from: p.cctv },
     { id: 'emergency', icon: '🚨', name: 'Emergency', desc: '24/7 urgent help', bg: 'bg-red-200', from: p.emergency },
   ];
 }

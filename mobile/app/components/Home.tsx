@@ -39,8 +39,12 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
       if (data.length >= 3) {
         const svcMap: Record<string, { label: string; icon: string }> = {
           plumbing: { label: 'Plumbing', icon: '🔧' }, electrical: { label: 'Electrical', icon: '⚡' },
-          ac_repair: { label: 'AC Servicing', icon: '❄️' }, generator: { label: 'Generator Repair', icon: '⚙️' },
-          carpentry: { label: 'Carpentry', icon: '🪚' }, emergency: { label: 'Emergency', icon: '🚨' },
+          ac_repair: { label: 'AC Servicing', icon: '❄️' }, generator: { label: 'Generator', icon: '⚙️' },
+          carpentry: { label: 'Carpentry', icon: '🪚' }, cleaning: { label: 'Cleaning', icon: '🧹' },
+          fumigation: { label: 'Fumigation', icon: '🪲' }, makeup: { label: 'Makeup', icon: '💄' },
+          mechanic: { label: 'Mechanic', icon: '🚗' }, painting: { label: 'Painting', icon: '🎨' },
+          tiling: { label: 'Tiling', icon: '🧱' }, welding: { label: 'Welding', icon: '🔩' },
+          cctv: { label: 'CCTV', icon: '📹' }, emergency: { label: 'Emergency', icon: '🚨' },
         };
         const tags = ['Most booked', 'Trending', 'Popular'];
         setPopular(data.map((d: any, i: number) => ({

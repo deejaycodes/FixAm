@@ -17,8 +17,21 @@ const SERVICE_MENU = [
   { id: 'electrical', title: '⚡ Electrical', description: 'Wiring, sockets, lights' },
   { id: 'ac_repair', title: '❄️ AC Repair', description: 'Servicing, gas refill, install' },
   { id: 'generator', title: '⚙️ Generator Repair', description: 'Servicing, parts, install' },
+  { id: 'cleaning', title: '🧹 Home Cleaning', description: 'Deep clean, regular, move-in' },
+  { id: 'fumigation', title: '🪲 Fumigation', description: 'Pest control, termites, bugs' },
+  { id: 'makeup', title: '💄 Makeup Artist', description: 'Bridal, events, photoshoots' },
+  { id: 'mechanic', title: '🚗 Mechanic', description: 'Car repair, servicing, diagnostics' },
+  { id: 'painting', title: '🎨 Painting', description: 'Interior, exterior, POP' },
   { id: 'carpentry', title: '🪚 Carpentry', description: 'Furniture, doors, cabinets' },
+  { id: 'tiling', title: '🧱 Tiling', description: 'Floor, wall, bathroom tiles' },
+  { id: 'welding', title: '🔩 Welding', description: 'Gates, burglar-proof, railings' },
+  { id: 'cctv', title: '📹 CCTV/Security', description: 'Camera install, alarm systems' },
   { id: 'emergency', title: '🚨 Emergency (1.5x)', description: 'Urgent — 1.5x rate' },
+];
+
+const SERVICE_SECTIONS = [
+  { title: 'Home & Repair', rows: SERVICE_MENU.slice(0, 10) },
+  { title: 'More Services', rows: SERVICE_MENU.slice(10) },
 ];
 
 // ── Main entry point ────────────────────────────────────────────
@@ -276,7 +289,7 @@ async function handleArtisanFlow(from: string, message: WhatsAppMessage, session
   switch (session.step) {
     case 'onboard_name': {
       session.artisanName = message.text?.body;
-      await sendInteractiveList(from, 'What services do you offer? (Pick your main one, you can add more later)', 'Select Service', [{ title: 'Services', rows: SERVICE_MENU }]);
+      await sendInteractiveList(from, 'What services do you offer? (Pick your main one, you can add more later)', 'Select Service', SERVICE_SECTIONS);
       session.step = 'onboard_service';
       break;
     }
@@ -393,7 +406,7 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
           break;
         }
       }
-      await sendInteractiveList(from, 'Welcome to FixAm! 🛠️\nWhat service do you need today?\n\n(Artisan? Type "join" to sign up)', 'Choose Service', [{ title: 'Services', rows: SERVICE_MENU }]);
+      await sendInteractiveList(from, 'Welcome to FixAm! 🛠️\nWhat service do you need today?\n\n(Artisan? Type "join" to sign up)', 'Choose Service', SERVICE_SECTIONS);
       session.step = 'awaiting_service';
       break;
     }
@@ -408,7 +421,7 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
         break;
       }
       // "new" or anything else → show service menu
-      await sendInteractiveList(from, 'What service do you need?', 'Choose Service', [{ title: 'Services', rows: SERVICE_MENU }]);
+      await sendInteractiveList(from, 'What service do you need?', 'Choose Service', SERVICE_SECTIONS);
       session.step = 'awaiting_service';
       break;
     }
@@ -419,9 +432,7 @@ async function handleCustomerFlow(from: string, message: WhatsAppMessage, sessio
       if (!valid) { await sendMessage(from, 'Please select a service from the list.'); return; }
       if (serviceType === 'emergency') {
         session.emergency = true;
-        await sendInteractiveList(from, '🚨 Emergency! What type of service?', 'Select Service', [{
-          title: 'Services', rows: SERVICE_MENU.filter(s => s.id !== 'emergency'),
-        }]);
+        await sendInteractiveList(from, '🚨 Emergency! What type of service?', 'Select Service', SERVICE_SECTIONS.map(s => ({ ...s, rows: s.rows.filter(r => r.id !== 'emergency') })).filter(s => s.rows.length > 0));
         return; // stay on awaiting_service
       }
       session.serviceType = serviceType!;
