@@ -56,11 +56,22 @@ router.patch('/:id/resolve', async (req: Request, res: Response) => {
 });
 
 // Popular services by area
-router.get('/popular', async (_req: Request, res: Response) => {
-  const { fn, col } = require('sequelize');
+router.get('/popular', async (req: Request, res: Response) => {
+  const { fn, col, Op, literal } = require('sequelize');
+  const lat = parseFloat(req.query.lat as string);
+  const lng = parseFloat(req.query.lng as string);
+  const where: any = { status: { [Op.ne]: 'cancelled' } };
+  // If location provided, filter to ~20km radius
+  if (!isNaN(lat) && !isNaN(lng)) {
+    const d = 0.18; // ~20km in degrees
+    where[Op.and] = [
+      literal(`CAST("location"->>'lat' AS FLOAT) BETWEEN ${lat - d} AND ${lat + d}`),
+      literal(`CAST("location"->>'lng' AS FLOAT) BETWEEN ${lng - d} AND ${lng + d}`),
+    ];
+  }
   const popular = await ServiceRequest.findAll({
     attributes: ['serviceType', [fn('COUNT', col('id')), 'count']],
-    where: { status: { [require('sequelize').Op.ne]: 'cancelled' } },
+    where,
     group: ['serviceType'],
     order: [[fn('COUNT', col('id')), 'DESC']],
     limit: 3,

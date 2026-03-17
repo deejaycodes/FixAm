@@ -46,6 +46,20 @@ export async function listBanks() {
   return data.data as { name: string; code: string }[];
 }
 
+export async function createTransferRecipient(params: { name: string; accountNumber: string; bankCode: string }) {
+  const { data } = await axios.post(`${PAYSTACK_BASE}/transferrecipient`, {
+    type: 'nuban', name: params.name, account_number: params.accountNumber, bank_code: params.bankCode,
+  }, { headers });
+  return data.data as { recipient_code: string };
+}
+
+export async function initiateTransfer(params: { amount: number; recipientCode: string; reason: string }) {
+  const { data } = await axios.post(`${PAYSTACK_BASE}/transfer`, {
+    source: 'balance', amount: params.amount, recipient: params.recipientCode, reason: params.reason,
+  }, { headers });
+  return data.data as { transfer_code: string; status: string };
+}
+
 // Create a dedicated virtual account for a transaction (transfer payment)
 export async function createDedicatedAccount(params: { email: string; reference: string; amount: number }) {
   // Use Paystack's dedicated virtual account (DVA) or generate transfer details

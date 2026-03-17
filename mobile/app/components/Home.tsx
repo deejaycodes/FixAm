@@ -29,7 +29,13 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
   ]);
 
   useEffect(() => {
-    api('/api/popular').then((data: any[]) => {
+    let url = '/api/popular';
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        api(`/api/popular?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`).then(handlePopular).catch(() => {});
+      }, () => api(url).then(handlePopular).catch(() => {}), { timeout: 3000 });
+    } else { api(url).then(handlePopular).catch(() => {}); }
+    function handlePopular(data: any[]) {
       if (data.length >= 3) {
         const svcMap: Record<string, { label: string; icon: string }> = {
           plumbing: { label: 'Plumbing', icon: '🔧' }, electrical: { label: 'Electrical', icon: '⚡' },
@@ -42,7 +48,7 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
           icon: svcMap[d.serviceType]?.icon || '🔧', tag: tags[i] || '',
         })));
       }
-    }).catch(() => {});
+    }
   }, []);
 
   useEffect(() => {

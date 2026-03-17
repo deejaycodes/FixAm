@@ -3,7 +3,7 @@ import { ServiceRequest, Artisan, Customer, Quote, Message, Payment } from '../m
 import { findBestArtisan } from '../services/matching';
 import { estimatePrice, applyLoyaltyDiscount } from '../services/pricing';
 import { sendMessage, sendButtons } from '../services/whatsapp';
-import { initializePayment, createDedicatedAccount } from '../services/paystack';
+import { initializePayment, createDedicatedAccount, createTransferRecipient, initiateTransfer } from '../services/paystack';
 import { sendPushToCustomer } from '../services/push';
 
 const router = Router();
@@ -228,12 +228,26 @@ router.post('/:id/release', async (req: Request, res: Response) => {
   }
   const payment = await Payment.findOne({ where: { ServiceRequestId: request.id, status: 'paid' } });
   if (!payment) { res.status(400).json({ error: 'No held payment found' }); return; }
-  // Transfer 85% to artisan via Paystack Transfers API
   const artisanAmount = Math.round(payment.amount * 0.85);
   const commission = payment.amount - artisanAmount;
+
+  // Actual Paystack transfer to artisan
+  const artisan = request.Artisan as any;
+  if (artisan?.paystackSubaccount) {
+    try {
+      // Look up artisan bank details from subaccount to create transfer recipient
+      const recipient = await createTransferRecipient({
+        name: artisan.name, accountNumber: artisan.accountNumber || '', bankCode: artisan.bankCode || '',
+      });
+      await initiateTransfer({ amount: artisanAmount, recipientCode: recipient.recipient_code, reason: `FixAm job ${request.id}` });
+    } catch (e: any) {
+      console.error('Paystack transfer failed:', e.message);
+      // Still mark as released — admin can manually transfer
+    }
+  }
+
   await payment.update({ commission, status: 'paid' });
   await request.update({ status: 'completed', completedAt: new Date(), finalPrice: payment.amount });
-  // Note: actual Paystack transfer would go here with their Transfers API
   res.json({ success: true, artisanAmount, commission });
 });
 

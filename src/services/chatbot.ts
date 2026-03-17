@@ -1,4 +1,4 @@
-import { sendMessage, sendInteractiveList, sendButtons, sendLocation } from './whatsapp';
+import { sendMessage, sendInteractiveList, sendButtons, sendLocation, getMediaUrl } from './whatsapp';
 import { estimatePrice, applyLoyaltyDiscount } from './pricing';
 import { findBestArtisan } from './matching';
 import { getSession, setSession, deleteSession, Session } from './sessions';
@@ -143,20 +143,22 @@ async function handleArtisanCommands(from: string, artisan: InstanceType<typeof 
   }
 
   if (!text && message.image?.id) {
+    let imageUrl: string;
+    try { imageUrl = await getMediaUrl(message.image.id); } catch { imageUrl = message.image.id; }
     const activeJob = await ServiceRequest.findOne({
       where: { ArtisanId: artisan.id, status: { [Op.in]: ['accepted', 'in_progress'] } },
       order: [['createdAt', 'DESC']],
     });
     if (activeJob) {
       const photos = activeJob.photos || [];
-      photos.push(message.image.id);
+      photos.push(imageUrl);
       await activeJob.update({ photos, status: 'in_progress' });
       await sendMessage(from, `📸 Photo saved (${photos.length} total). Send more or wait for customer rating.`);
       return true;
     }
     // No active job — save as portfolio photo
     const portfolio = artisan.portfolioPhotos || [];
-    portfolio.push(message.image.id);
+    portfolio.push(imageUrl);
     await artisan.update({ portfolioPhotos: portfolio });
     await sendMessage(from, `📸 Added to your portfolio (${portfolio.length} photos). Customers can see these when matched with you.`);
     return true;
@@ -310,7 +312,7 @@ async function handleArtisanFlow(from: string, message: WhatsAppMessage, session
       }
       try {
         const sub = await createSubaccount({ businessName: artisan.name, bankCode: session.artisanBankCode!, accountNumber: acct });
-        await artisan.update({ paystackSubaccount: sub.subaccount_code });
+        await artisan.update({ paystackSubaccount: sub.subaccount_code, bankCode: session.artisanBankCode!, accountNumber: acct });
         const isNew = !session.artisanServices ? false : true;
         await sendMessage(from, isNew
           ? `✅ Welcome aboard, ${artisan.name}! 🎉\n\n🏦 Bank account linked — you'll receive 85% of every job payment directly to your bank.\n\nYour profile is pending verification. Once verified, you'll start receiving job requests.\n\nReply "accept" or "decline" when you get a job notification.`

@@ -34,6 +34,8 @@ interface ArtisanAttributes {
   referredBy: string | null;
   priorityBoost: boolean;
   paystackSubaccount: string | null;
+  bankCode: string | null;
+  accountNumber: string | null;
   profileSlug: string;
   bio: string | null;
   sharingLocation: boolean;
@@ -97,7 +99,7 @@ interface AdminUserAttributes {
 // ── Creation attributes (id auto-generated) ────────────────────
 
 type CustomerCreation = Optional<CustomerAttributes, 'id' | 'name' | 'whatsappId' | 'location' | 'referralCode' | 'referredBy' | 'discountUsed' | 'subscriptionTier' | 'subscriptionExpiresAt' | 'pushSubscription'>;
-type ArtisanCreation = Optional<ArtisanAttributes, 'id' | 'whatsappId' | 'location' | 'rating' | 'totalJobs' | 'verified' | 'available' | 'ninVerified' | 'referralCode' | 'referredBy' | 'priorityBoost' | 'paystackSubaccount' | 'profileSlug' | 'bio' | 'sharingLocation' | 'liveLocation' | 'portfolioPhotos'>;
+type ArtisanCreation = Optional<ArtisanAttributes, 'id' | 'whatsappId' | 'location' | 'rating' | 'totalJobs' | 'verified' | 'available' | 'ninVerified' | 'referralCode' | 'referredBy' | 'priorityBoost' | 'paystackSubaccount' | 'bankCode' | 'accountNumber' | 'profileSlug' | 'bio' | 'sharingLocation' | 'liveLocation' | 'portfolioPhotos'>;
 type ServiceRequestCreation = Optional<ServiceRequestAttributes, 'id' | 'description' | 'location' | 'estimatedPrice' | 'finalPrice' | 'status' | 'rating' | 'review' | 'completedAt' | 'discount' | 'photos' | 'guaranteeUsed' | 'CustomerId' | 'ArtisanId' | 'scheduledAt'>;
 type PaymentCreation = Optional<PaymentAttributes, 'id' | 'commission' | 'paystackRef' | 'status' | 'ServiceRequestId'>;
 type AdminUserCreation = Optional<AdminUserAttributes, 'id' | 'name'>;
@@ -136,6 +138,8 @@ class Artisan extends Model<ArtisanAttributes, ArtisanCreation> implements Artis
   declare referredBy: string | null;
   declare priorityBoost: boolean;
   declare paystackSubaccount: string | null;
+  declare bankCode: string | null;
+  declare accountNumber: string | null;
   declare profileSlug: string;
   declare bio: string | null;
   declare sharingLocation: boolean;
@@ -231,6 +235,8 @@ Artisan.init({
   referredBy: { type: DataTypes.UUID },
   priorityBoost: { type: DataTypes.BOOLEAN, defaultValue: false },
   paystackSubaccount: { type: DataTypes.STRING },
+  bankCode: { type: DataTypes.STRING },
+  accountNumber: { type: DataTypes.STRING },
   profileSlug: { type: DataTypes.STRING, unique: true, defaultValue: () => crypto.randomBytes(4).toString('hex') },
   bio: { type: DataTypes.TEXT },
   sharingLocation: { type: DataTypes.BOOLEAN, defaultValue: false },

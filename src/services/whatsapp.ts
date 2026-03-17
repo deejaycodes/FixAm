@@ -16,6 +16,14 @@ interface ReplyButton {
   title: string;
 }
 
+export async function getMediaUrl(mediaId: string): Promise<string> {
+  const { data } = await axios.get(`${GRAPH_API}/${mediaId}`, { headers });
+  const { data: media } = await axios.get(data.url, { headers, responseType: 'arraybuffer' });
+  const b64 = Buffer.from(media).toString('base64');
+  const mime = data.mime_type || 'image/jpeg';
+  return `data:${mime};base64,${b64}`;
+}
+
 export async function sendMessage(to: string, text: string): Promise<void> {
   try {
     await axios.post(`${GRAPH_API}/${PHONE_ID}/messages`, {
