@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api, statusMap, formatPrice } from '../lib';
 
-const stepLabels = ['Requested', 'Matched', 'On the way', 'Done'];
+const stepLabels = ['Requested', 'Matched', 'Accepted', 'On the way', 'Done'];
 
 function Stepper({ step }: { step: number }) {
   return (
@@ -15,7 +15,7 @@ function Stepper({ step }: { step: number }) {
             </div>
             <span className={`text-[9px] mt-1 font-medium ${i <= step ? 'text-teal-700' : 'text-gray-400'}`}>{label}</span>
           </div>
-          {i < 3 && <div className={`flex-1 h-0.5 mx-1 mt-[-12px] ${i < step ? 'bg-teal-600' : 'bg-gray-200'}`} />}
+          {i < 4 && <div className={`flex-1 h-0.5 mx-1 mt-[-12px] ${i < step ? 'bg-teal-600' : 'bg-gray-200'}`} />}
         </div>
       ))}
     </div>

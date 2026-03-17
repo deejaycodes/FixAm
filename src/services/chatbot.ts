@@ -193,8 +193,35 @@ async function handleArtisanJobResponse(from: string, artisan: InstanceType<type
       await sendMessage(customer.whatsappId, `🎉 ${artisan.name} has accepted your job and is on the way!\n📞 Contact: ${artisan.phone}\n\nRate 1-5 when the job is done.`);
     }
   } else {
+    const declinedId = artisan.id;
     await request.update({ ArtisanId: null, status: 'pending' });
     await sendMessage(from, 'Job declined. We\'ll find another artisan.');
+
+    // Notify customer
+    if (request.CustomerId) {
+      sendPushToCustomer(request.CustomerId, { title: '🔄 Finding another artisan', body: 'The matched artisan couldn\'t take this job. We\'re finding someone else.', url: '/' }).catch(() => {});
+    }
+    const customer = await Customer.findByPk(request.CustomerId!);
+    if (customer?.whatsappId) {
+      await sendMessage(customer.whatsappId, '⏳ The matched artisan is unavailable. We\'re finding another one for you — hang tight!');
+    }
+
+    // Auto-rematch (exclude the one who declined)
+    const newArtisan = await findBestArtisan(request.serviceType as any, request.location);
+    if (newArtisan && newArtisan.id !== declinedId) {
+      await request.update({ ArtisanId: newArtisan.id, status: 'assigned' });
+      sendPushToCustomer(request.CustomerId!, { title: '🎉 New artisan found!', body: `${newArtisan.name} has been matched to your request.`, url: '/' }).catch(() => {});
+      if (customer?.whatsappId) {
+        await sendMessage(customer.whatsappId, `✅ Good news! ${newArtisan.name} has been matched to your job.`);
+      }
+      if (newArtisan.whatsappId) {
+        const est = request.estimatedPrice ? `₦${(request.estimatedPrice / 100).toLocaleString()}` : 'TBD';
+        await sendButtons(newArtisan.whatsappId, `🔔 New job!\nService: ${request.serviceType}\nProblem: ${request.description}\nEstimate: ${est}`, [
+          { id: 'accept', title: '✅ Accept' },
+          { id: 'decline', title: '❌ Decline' },
+        ]);
+      }
+    }
   }
 }
 

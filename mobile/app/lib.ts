@@ -70,9 +70,9 @@ export const services = getServices('NG');
 export const statusMap: Record<string, { icon: string; label: string; color: string; bg: string; step: number }> = {
   pending: { icon: '🔍', label: 'Finding artisan...', color: 'text-amber-600', bg: 'bg-amber-50', step: 0 },
   assigned: { icon: '⏳', label: 'Artisan matched', color: 'text-blue-600', bg: 'bg-blue-50', step: 1 },
-  accepted: { icon: '🚗', label: 'On the way', color: 'text-teal-600', bg: 'bg-teal-50', step: 2 },
-  in_progress: { icon: '🔧', label: 'In progress', color: 'text-teal-600', bg: 'bg-teal-50', step: 2 },
-  completed: { icon: '✅', label: 'Completed', color: 'text-green-600', bg: 'bg-green-50', step: 3 },
+  accepted: { icon: '✅', label: 'Artisan accepted', color: 'text-teal-600', bg: 'bg-teal-50', step: 2 },
+  in_progress: { icon: '🚗', label: 'On the way', color: 'text-teal-600', bg: 'bg-teal-50', step: 3 },
+  completed: { icon: '✅', label: 'Completed', color: 'text-green-600', bg: 'bg-green-50', step: 4 },
   cancelled: { icon: '❌', label: 'Cancelled', color: 'text-red-600', bg: 'bg-red-50', step: -1 },
 };
 
