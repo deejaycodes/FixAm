@@ -1,20 +1,26 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { api, services, statusMap, pillColor } from '../lib';
+import { api, getServices, getCountry, statusMap, pillColor } from '../lib';
 
-const promos = ['🛡️ Job Guarantee', '⚡ 15min Emergency', '💰 Refer & Earn ₦1k'];
-
-const reviews = [
-  { name: 'Chioma A.', area: 'Lekki', text: 'Plumber came in 20 minutes. Fixed my burst pipe same day. Lifesaver!', rating: 5 },
-  { name: 'Emeka O.', area: 'Ikeja', text: 'AC guy was professional and honest about pricing. Will use again.', rating: 5 },
-  { name: 'Funke B.', area: 'Surulere', text: 'Generator repair at 10pm on a Sunday. These guys are serious!', rating: 4 },
-];
+const basePromos = ['🛡️ Job Guarantee', '⚡ 15min Emergency'];
 
 export default function Home({ nav, token, user }: { nav: (s: string, p?: any) => void; token: string | null; user: any }) {
   const [recent, setRecent] = useState<any>(null);
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const country = getCountry();
+  const services = getServices();
+
+  const reviews = country.code === 'GH' ? [
+    { name: 'Kwame A.', area: 'East Legon', text: 'Electrician came within 30 minutes. Very professional work!', rating: 5 },
+    { name: 'Ama O.', area: 'Osu', text: 'AC repair guy was honest about pricing. Highly recommend.', rating: 5 },
+    { name: 'Kofi B.', area: 'Tema', text: 'Generator fixed on a Sunday evening. These guys deliver!', rating: 4 },
+  ] : [
+    { name: 'Chioma A.', area: 'Lekki', text: 'Plumber came in 20 minutes. Fixed my burst pipe same day. Lifesaver!', rating: 5 },
+    { name: 'Emeka O.', area: 'Ikeja', text: 'AC guy was professional and honest about pricing. Will use again.', rating: 5 },
+    { name: 'Funke B.', area: 'Surulere', text: 'Generator repair at 10pm on a Sunday. These guys are serious!', rating: 4 },
+  ];
 
   useEffect(() => {
     if (!token) return;
@@ -72,7 +78,7 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
 
       {/* Promos */}
       <div className="px-5 mt-5 flex gap-2">
-        {promos.map(p => (
+        {[...basePromos, `💰 Refer & Earn ${country.code === 'GH' ? 'GH₵15' : '₦1k'}`].map(p => (
           <div key={p} className="flex-1 bg-amber-50 border border-amber-200 rounded-xl px-2 py-2.5 text-[10px] font-bold text-amber-800 text-center leading-tight">{p}</div>
         ))}
       </div>
@@ -136,7 +142,7 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
       {/* Social proof */}
       <div className="px-5 mt-6">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-gray-900">What Lagos is saying</h3>
+          <h3 className="text-sm font-bold text-gray-900">What {country.city} is saying</h3>
           <span className="text-[10px] text-gray-400 font-semibold">1,200+ jobs done</span>
         </div>
         <div className="flex gap-3 overflow-x-auto no-scrollbar">
@@ -170,7 +176,7 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
           </div>
           <div className="w-px h-8 bg-gray-700" />
           <div className="text-center">
-            <p className="text-white font-extrabold text-lg">₦0</p>
+            <p className="text-white font-extrabold text-lg">{country.currencySymbol}0</p>
             <p className="text-gray-400 text-[10px]">Booking Fee</p>
           </div>
         </div>

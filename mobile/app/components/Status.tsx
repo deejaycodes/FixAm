@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { api, statusMap } from '../lib';
+import { api, statusMap, formatPrice } from '../lib';
 
 const stepLabels = ['Requested', 'Matched', 'On the way', 'Done'];
 
@@ -176,7 +176,7 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
                   {q.message && <p className="text-xs text-gray-600 mt-1 truncate">{q.message}</p>}
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-teal-700">₦{(q.price / 100).toLocaleString()}</p>
+                  <p className="font-bold text-teal-700">{formatPrice(q.price)}</p>
                   <button onClick={() => acceptQuote(q.id)}
                     className="bg-teal-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg mt-1 active:scale-95 transition">
                     Accept
@@ -241,7 +241,7 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
       {req.estimatedPrice && (
         <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4 flex items-center justify-between shadow-sm">
           <span className="text-sm text-gray-600">Estimated cost</span>
-          <span className="font-bold text-lg text-gray-900">₦{(req.estimatedPrice / 100).toLocaleString()}</span>
+          <span className="font-bold text-lg text-gray-900">{formatPrice(req.estimatedPrice)}</span>
         </div>
       )}
 

@@ -6,14 +6,66 @@ export async function api(path: string, opts?: RequestInit) {
   return res.json();
 }
 
-export const services = [
-  { id: 'plumbing', icon: '🔧', name: 'Plumbing', desc: 'Pipes & drainage', bg: 'bg-teal-200', from: '₦5k' },
-  { id: 'electrical', icon: '⚡', name: 'Electrical', desc: 'Wiring & lights', bg: 'bg-amber-200', from: '₦4k' },
-  { id: 'ac_repair', icon: '❄️', name: 'AC Repair', desc: 'Cooling systems', bg: 'bg-blue-200', from: '₦8k' },
-  { id: 'generator', icon: '⚙️', name: 'Generator', desc: 'Power solutions', bg: 'bg-orange-200', from: '₦6k' },
-  { id: 'carpentry', icon: '🪚', name: 'Carpentry', desc: 'Wood & furniture', bg: 'bg-violet-200', from: '₦7k' },
-  { id: 'emergency', icon: '🚨', name: 'Emergency', desc: '24/7 urgent help', bg: 'bg-red-200', from: '₦10k' },
-];
+// ── Country config ──────────────────────────────────────────────
+
+export type CountryCode = 'NG' | 'GH';
+
+export interface Country {
+  code: CountryCode;
+  name: string;
+  flag: string;
+  currency: string;
+  currencySymbol: string;
+  phonePrefix: string;
+  phonePlaceholder: string;
+  whatsapp: string;
+  city: string;
+  idType: string;
+}
+
+export const countries: Record<CountryCode, Country> = {
+  NG: {
+    code: 'NG', name: 'Nigeria', flag: '🇳🇬', currency: 'NGN', currencySymbol: '₦',
+    phonePrefix: '+234', phonePlaceholder: '08012345678', whatsapp: '2349124453172',
+    city: 'Lagos', idType: 'NIN',
+  },
+  GH: {
+    code: 'GH', name: 'Ghana', flag: '🇬🇭', currency: 'GHS', currencySymbol: 'GH₵',
+    phonePrefix: '+233', phonePlaceholder: '024 123 4567', whatsapp: '2349124453172',
+    city: 'Accra', idType: 'Ghana Card',
+  },
+};
+
+const COUNTRY_KEY = 'fixam_country';
+export function getCountry(): Country {
+  if (typeof window === 'undefined') return countries.NG;
+  const saved = localStorage.getItem(COUNTRY_KEY) as CountryCode | null;
+  return countries[saved || 'NG'];
+}
+export function setCountry(code: CountryCode) { localStorage.setItem(COUNTRY_KEY, code); }
+
+// ── Services (country-aware pricing) ────────────────────────────
+
+const pricing: Record<CountryCode, Record<string, string>> = {
+  NG: { plumbing: '₦5k', electrical: '₦4k', ac_repair: '₦8k', generator: '₦6k', carpentry: '₦7k', emergency: '₦10k' },
+  GH: { plumbing: 'GH₵80', electrical: 'GH₵60', ac_repair: 'GH₵150', generator: 'GH₵100', carpentry: 'GH₵120', emergency: 'GH₵200' },
+};
+
+export function getServices(country?: CountryCode) {
+  const c = country || getCountry().code;
+  const p = pricing[c];
+  return [
+    { id: 'plumbing', icon: '🔧', name: 'Plumbing', desc: 'Pipes & drainage', bg: 'bg-teal-200', from: p.plumbing },
+    { id: 'electrical', icon: '⚡', name: 'Electrical', desc: 'Wiring & lights', bg: 'bg-amber-200', from: p.electrical },
+    { id: 'ac_repair', icon: '❄️', name: 'AC Repair', desc: 'Cooling systems', bg: 'bg-blue-200', from: p.ac_repair },
+    { id: 'generator', icon: '⚙️', name: 'Generator', desc: 'Power solutions', bg: 'bg-orange-200', from: p.generator },
+    { id: 'carpentry', icon: '🪚', name: 'Carpentry', desc: 'Wood & furniture', bg: 'bg-violet-200', from: p.carpentry },
+    { id: 'emergency', icon: '🚨', name: 'Emergency', desc: '24/7 urgent help', bg: 'bg-red-200', from: p.emergency },
+  ];
+}
+
+// Keep static export for components that don't need country-awareness yet
+export const services = getServices('NG');
 
 export const statusMap: Record<string, { icon: string; label: string; color: string; bg: string; step: number }> = {
   pending: { icon: '🔍', label: 'Finding artisan...', color: 'text-amber-600', bg: 'bg-amber-50', step: 0 },
@@ -32,3 +84,9 @@ export const pillColor: Record<string, string> = {
   completed: 'bg-green-100 text-green-700',
   cancelled: 'bg-red-100 text-red-700',
 };
+
+// Format price for current country
+export function formatPrice(kobo: number): string {
+  const c = getCountry();
+  return `${c.currencySymbol}${(kobo / 100).toLocaleString()}`;
+}

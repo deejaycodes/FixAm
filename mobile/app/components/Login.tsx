@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { api } from '../lib';
+import { api, countries, getCountry, setCountry, CountryCode } from '../lib';
 
 export default function Login({ onLogin }: { onLogin: (t: string, u: any) => void }) {
   const [phone, setPhone] = useState('');
@@ -8,6 +8,8 @@ export default function Login({ onLogin }: { onLogin: (t: string, u: any) => voi
   const [isReg, setIsReg] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [cc, setCc] = useState<CountryCode>(getCountry().code);
+  const c = countries[cc];
 
   const submit = async () => {
     if (!phone.trim()) return;
@@ -37,12 +39,20 @@ export default function Login({ onLogin }: { onLogin: (t: string, u: any) => voi
 
         <div className="bg-white rounded-3xl p-6 mb-6 shadow-xl">
           <p className="text-gray-900 font-bold text-lg mb-4">{isReg ? 'Create Account' : 'Welcome back'}</p>
+          <div className="flex gap-2 mb-3">
+            {(Object.keys(countries) as CountryCode[]).map(k => (
+              <button key={k} onClick={() => { setCc(k); setCountry(k); }}
+                className={`flex-1 py-2.5 rounded-xl text-center text-xs font-bold transition border-2 ${cc === k ? 'border-teal-600 bg-teal-50 text-teal-700' : 'border-gray-100 bg-gray-50 text-gray-500'}`}>
+                {countries[k].flag} {countries[k].name}
+              </button>
+            ))}
+          </div>
           {isReg && (
             <input className="w-full bg-gray-50 text-gray-900 placeholder-gray-400 rounded-xl px-4 py-3.5 mb-3 text-sm outline-none focus:ring-2 focus:ring-teal-500/30 border border-gray-200"
               placeholder="Your name" value={name} onChange={e => setName(e.target.value)} />
           )}
           <input className="w-full bg-gray-50 text-gray-900 placeholder-gray-400 rounded-xl px-4 py-3.5 mb-3 text-sm outline-none focus:ring-2 focus:ring-teal-500/30 border border-gray-200"
-            placeholder="Phone (e.g. 08012345678)" value={phone} onChange={e => setPhone(e.target.value)} type="tel"
+            placeholder={`Phone (e.g. ${c.phonePlaceholder})`} value={phone} onChange={e => setPhone(e.target.value)} type="tel"
             onKeyDown={e => e.key === 'Enter' && submit()} />
           {error && <p className="text-red-500 text-xs mb-3">{error}</p>}
           <button onClick={submit} disabled={loading}
