@@ -4,6 +4,7 @@ import { findBestArtisan } from './matching';
 import { getSession, setSession, deleteSession, Session } from './sessions';
 import { transcribeVoiceNote } from './transcription';
 import { applyReferralCode } from './referral';
+import { createSubaccount } from './paystack';
 import { isPremium } from './subscription';
 import { requestQuotes, submitQuote, getQuotesForRequest, acceptQuote } from './quotes';
 import { Customer, Artisan, ServiceRequest, Quote, Message } from '../models';
@@ -103,6 +104,21 @@ async function handleArtisanCommands(from: string, artisan: InstanceType<typeof 
     return true;
   }
 
+  if (text === 'bank') {
+    if (artisan.paystackSubaccount) {
+      await sendMessage(from, '🏦 Your bank account is already linked. Payments go directly to your bank after each job.');
+    } else {
+      // Start bank setup flow
+      const session = await getSession(from);
+      session.role = 'artisan';
+      session.step = 'onboard_bank';
+      session.artisanName = artisan.name;
+      await setSession(from, session);
+      await sendMessage(from, '🏦 Let\'s set up your bank account.\n\nWhat bank do you use? (e.g. GTBank, Access, First Bank, UBA, Kuda, OPay)');
+    }
+    return true;
+  }
+
   if (text === 'profile') {
     const link = `${process.env.BASE_URL || 'http://localhost:3000'}/p/${artisan.profileSlug}`;
     await sendMessage(from, `👤 Your public profile:\n${link}\n\nShare this link with customers!`);
@@ -122,7 +138,7 @@ async function handleArtisanCommands(from: string, artisan: InstanceType<typeof 
   }
 
   if (text === 'help') {
-    await sendMessage(from, `👷 Artisan Commands:\n\n"earnings" — view your earnings\n"jobs" — recent job history\n"online" / "offline" — toggle availability\n"accept" / "decline" — respond to job\n"profile" — your shareable profile link\n"share location" / "stop sharing" — GPS tracking\n"help" — show this menu\n\n📸 Send photos during a job\n💰 Reply with a number to submit a quote`);
+    await sendMessage(from, `👷 Artisan Commands:\n\n"earnings" — view your earnings\n"jobs" — recent job history\n"bank" — set up bank for direct payments\n"online" / "offline" — toggle availability\n"accept" / "decline" — respond to job\n"profile" — your shareable profile link\n"share location" / "stop sharing" — GPS tracking\n"help" — show this menu\n\n📸 Send photos during a job\n💰 Reply with a number to submit a quote`);
     return true;
   }
 
@@ -141,7 +157,7 @@ async function handleArtisanCommands(from: string, artisan: InstanceType<typeof 
   }
 
   // Forward artisan text messages to in-app chat
-  if (text && !['earnings','jobs','online','offline','profile','help','accept','decline','share location','stop sharing'].includes(text)) {
+  if (text && !['earnings','jobs','online','offline','profile','help','accept','decline','share location','stop sharing','bank'].includes(text)) {
     const activeJob = await ServiceRequest.findOne({
       where: { ArtisanId: artisan.id, status: { [Op.in]: ['assigned', 'accepted', 'in_progress'] } },
       order: [['createdAt', 'DESC']],
@@ -204,14 +220,72 @@ async function handleArtisanFlow(from: string, message: WhatsAppMessage, session
     case 'onboard_location': {
       const loc = message.location;
       if (!loc) { await sendMessage(from, 'Please use the attachment button to share your location 📍'); return; }
-      const artisan = await Artisan.create({
-        name: session.artisanName!,
-        phone: from,
-        whatsappId: from,
-        services: session.artisanServices!,
-        location: { lat: loc.latitude, lng: loc.longitude },
-      });
-      await sendMessage(from, `✅ Welcome aboard, ${artisan.name}! 🎉\n\nYour profile is pending verification. Once verified, you'll start receiving job requests.\n\nReply "accept" or "decline" when you get a job notification.`);
+      session.artisanLocation = { lat: loc.latitude, lng: loc.longitude };
+      await sendMessage(from, '🏦 To receive payments directly to your bank, what bank do you use?\n\nType your bank name (e.g. GTBank, Access, First Bank, UBA, Zenith)\n\nOr type "skip" to set up later.');
+      session.step = 'onboard_bank';
+      break;
+    }
+    case 'onboard_bank': {
+      const text = (message.text?.body || '').trim().toLowerCase();
+      if (text === 'skip') {
+        const artisan = await Artisan.create({
+          name: session.artisanName!, phone: from, whatsappId: from,
+          services: session.artisanServices!, location: session.artisanLocation,
+        });
+        await sendMessage(from, `✅ Welcome aboard, ${artisan.name}! 🎉\n\nYour profile is pending verification. Once verified, you'll start receiving job requests.\n\n⚠️ Set up your bank later by typing "bank" to receive direct payments.\n\nReply "accept" or "decline" when you get a job notification.`);
+        await deleteSession(from);
+        return;
+      }
+      const bankMap: Record<string, string> = {
+        'gtbank': '058', 'gtb': '058', 'guaranty': '058',
+        'access': '044', 'access bank': '044',
+        'first bank': '011', 'firstbank': '011', 'fbn': '011',
+        'uba': '033', 'united bank': '033',
+        'zenith': '057', 'zenith bank': '057',
+        'kuda': '090267', 'kuda bank': '090267',
+        'opay': '999992', 'opay bank': '999992',
+        'palmpay': '999991',
+        'wema': '035', 'wema bank': '035', 'alat': '035',
+        'stanbic': '221', 'stanbic ibtc': '221',
+        'sterling': '232', 'sterling bank': '232',
+        'union': '032', 'union bank': '032',
+        'fcmb': '214', 'first city': '214',
+        'fidelity': '070', 'fidelity bank': '070',
+        'ecobank': '050',
+        'polaris': '076', 'polaris bank': '076',
+        'keystone': '082', 'keystone bank': '082',
+        'moniepoint': '50515',
+      };
+      const code = bankMap[text];
+      if (!code) { await sendMessage(from, '❌ Bank not recognized. Try again (e.g. "GTBank", "Access", "Kuda", "OPay") or type "skip".'); return; }
+      session.artisanBankCode = code;
+      await sendMessage(from, '💳 Enter your 10-digit account number:');
+      session.step = 'onboard_account';
+      break;
+    }
+    case 'onboard_account': {
+      const acct = (message.text?.body || '').trim().replace(/\s/g, '');
+      if (!/^\d{10}$/.test(acct)) { await sendMessage(from, '❌ Please enter a valid 10-digit account number.'); return; }
+      session.artisanAccountNumber = acct;
+      // Check if artisan already exists (bank setup for existing artisan)
+      let artisan = await Artisan.findOne({ where: { whatsappId: from } });
+      if (!artisan) {
+        artisan = await Artisan.create({
+          name: session.artisanName!, phone: from, whatsappId: from,
+          services: session.artisanServices!, location: session.artisanLocation,
+        });
+      }
+      try {
+        const sub = await createSubaccount({ businessName: artisan.name, bankCode: session.artisanBankCode!, accountNumber: acct });
+        await artisan.update({ paystackSubaccount: sub.subaccount_code });
+        const isNew = !session.artisanServices ? false : true;
+        await sendMessage(from, isNew
+          ? `✅ Welcome aboard, ${artisan.name}! 🎉\n\n🏦 Bank account linked — you'll receive 85% of every job payment directly to your bank.\n\nYour profile is pending verification. Once verified, you'll start receiving job requests.\n\nReply "accept" or "decline" when you get a job notification.`
+          : `🏦 Bank account linked! You'll now receive 85% of every job payment directly to your bank.`
+        );
+      } catch {
+        await sendMessage(from, `⚠️ We couldn't link your bank right now. Please check your account number and try again by typing "bank".`);
+      }
       await deleteSession(from);
       return;
     }

@@ -12,6 +12,9 @@ export interface Session {
   requestId?: string;
   artisanName?: string;
   artisanServices?: string[];
+  artisanLocation?: { lat: number; lng: number };
+  artisanBankCode?: string;
+  artisanAccountNumber?: string;
   lastArtisanId?: string;
   lastServiceType?: string;
   repeatArtisanId?: string;
