@@ -19,6 +19,8 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
   const [photos, setPhotos] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [scheduledAt, setScheduledAt] = useState('');
+  const [dateErr, setDateErr] = useState('');
+  const dateRef = useRef<HTMLInputElement>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [name, setName] = useState('');
@@ -125,7 +127,7 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
       <label className="text-sm font-semibold text-gray-800 mb-2 block">When do you need this?</label>
       <div className="flex gap-2 mb-5">
         {urgencyOptions.map(u => (
-          <button key={u.id} onClick={() => setUrgency(u.id)}
+          <button key={u.id} onClick={() => { setUrgency(u.id); if (u.id !== 'flexible') { setScheduledAt(''); setDateErr(''); } }}
             className={`flex-1 py-2.5 rounded-xl text-center text-xs font-bold transition border-2 ${urgency === u.id ? 'border-teal-600 bg-teal-50 text-teal-700' : 'border-gray-100 bg-white text-gray-500'}`}>
             {u.label}
             <span className="block text-[9px] font-medium mt-0.5 opacity-70">{u.desc}</span>
@@ -134,9 +136,24 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
       </div>
 
       {urgency === 'flexible' && (
-        <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)}
-          min={new Date().toISOString().slice(0, 16)}
-          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-teal-200 mb-5 shadow-sm" />
+        <div className="relative mb-5">
+          <button type="button" onClick={() => dateRef.current?.showPicker?.()}
+            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-left shadow-sm active:scale-[0.98] transition">
+            {scheduledAt ? (
+              <span className="text-gray-900 font-medium">{new Date(scheduledAt).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+            ) : (
+              <span className="text-gray-400">📅 Pick date &amp; time...</span>
+            )}
+          </button>
+          <input ref={dateRef} type="datetime-local" value={scheduledAt}
+            onChange={e => {
+              if (e.target.value < new Date().toISOString().slice(0, 16)) { setDateErr('Please pick a future date'); return; }
+              setDateErr(''); setScheduledAt(e.target.value);
+            }}
+            min={new Date().toISOString().slice(0, 16)}
+            className="absolute inset-0 opacity-0 w-full h-full" />
+          {dateErr && <p className="text-red-500 text-xs mt-1.5 font-medium">{dateErr}</p>}
+        </div>
       )}
 
       <label className="text-sm font-semibold text-gray-800 mb-2 block">What&apos;s the problem?</label>

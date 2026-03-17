@@ -61,7 +61,7 @@ export default function Home() {
                 Book via WhatsApp
               </a>
               <a href="#download" className="bg-gray-900 text-white px-7 py-4 rounded-xl text-base font-bold hover:bg-gray-800 transition text-center">
-                Download the App
+                Open the App
               </a>
             </div>
           </div>
@@ -172,24 +172,17 @@ export default function Home() {
       {/* Download */}
       <section id="download" className="py-24 px-6 bg-gradient-to-br from-teal-50 to-white">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">Get the app</h2>
-          <p className="text-gray-500 text-lg mb-10">Coming soon to iOS and Android.</p>
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">Try FixAm now</h2>
+          <p className="text-gray-500 text-lg mb-10">No download needed. Works right in your browser.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <div className="bg-gray-900 text-white px-6 py-4 rounded-xl flex items-center gap-3 opacity-60">
-              <span className="text-2xl">🍎</span>
-              <div className="text-left">
-                <div className="text-[10px] uppercase tracking-wider text-gray-400">Coming soon on</div>
-                <div className="font-bold text-sm">App Store</div>
-              </div>
-            </div>
-            <div className="bg-gray-900 text-white px-6 py-4 rounded-xl flex items-center gap-3 opacity-60">
-              <span className="text-2xl">▶️</span>
-              <div className="text-left">
-                <div className="text-[10px] uppercase tracking-wider text-gray-400">Coming soon on</div>
-                <div className="font-bold text-sm">Google Play</div>
-              </div>
-            </div>
+            <a href="https://out-one-red.vercel.app" className="bg-primary text-white px-8 py-4 rounded-xl text-base font-bold hover:bg-dark transition shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+              📱 Open Web App
+            </a>
+            <a href="https://wa.me/2349124453172?text=Hi" className="bg-green-600 text-white px-8 py-4 rounded-xl text-base font-bold hover:bg-green-700 transition shadow-lg shadow-green-600/20 flex items-center justify-center gap-2">
+              💬 Use via WhatsApp
+            </a>
           </div>
+          <p className="text-gray-400 text-sm mt-6">Native iOS &amp; Android apps coming soon.</p>
         </div>
       </section>
 

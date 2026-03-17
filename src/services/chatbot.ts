@@ -6,7 +6,7 @@ import { transcribeVoiceNote } from './transcription';
 import { applyReferralCode } from './referral';
 import { isPremium } from './subscription';
 import { requestQuotes, submitQuote, getQuotesForRequest, acceptQuote } from './quotes';
-import { Customer, Artisan, ServiceRequest, Quote } from '../models';
+import { Customer, Artisan, ServiceRequest, Quote, Message } from '../models';
 import { fn, col, Op } from 'sequelize';
 import type { WhatsAppMessage } from './types';
 
@@ -135,6 +135,19 @@ async function handleArtisanCommands(from: string, artisan: InstanceType<typeof 
       photos.push(message.image.id);
       await activeJob.update({ photos, status: 'in_progress' });
       await sendMessage(from, `📸 Photo saved (${photos.length} total). Send more or wait for customer rating.`);
+      return true;
+    }
+  }
+
+  // Forward artisan text messages to in-app chat
+  if (text && !['earnings','jobs','online','offline','profile','help','accept','decline','share location','stop sharing'].includes(text)) {
+    const activeJob = await ServiceRequest.findOne({
+      where: { ArtisanId: artisan.id, status: { [Op.in]: ['assigned', 'accepted', 'in_progress'] } },
+      order: [['createdAt', 'DESC']],
+    });
+    if (activeJob) {
+      await Message.create({ text, sender: 'artisan', ServiceRequestId: activeJob.id });
+      await sendMessage(from, '💬 Message sent to customer.');
       return true;
     }
   }
