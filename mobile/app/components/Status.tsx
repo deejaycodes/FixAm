@@ -144,9 +144,14 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
         <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 mt-4">
           <p className="text-xs font-semibold text-gray-500 mb-2">Payment options</p>
           <div className="flex gap-2">
-            <span className="flex-1 text-center bg-white border border-gray-200 rounded-xl py-2 text-[10px] font-bold text-gray-700">💳 Paystack</span>
-            <span className="flex-1 text-center bg-white border border-gray-200 rounded-xl py-2 text-[10px] font-bold text-gray-700">🏦 Transfer</span>
-            <span className="flex-1 text-center bg-white border border-gray-200 rounded-xl py-2 text-[10px] font-bold text-gray-700">💵 Cash</span>
+            <button onClick={async () => {
+              try {
+                const { url } = await api(`/api/requests/${params.requestId}/pay`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+                window.open(url, '_blank');
+              } catch { /* Paystack not configured */ }
+            }} className="flex-1 text-center bg-white border border-gray-200 rounded-xl py-2.5 text-[10px] font-bold text-gray-700 active:scale-95 transition">💳 Pay Online</button>
+            <span className="flex-1 text-center bg-white border border-gray-200 rounded-xl py-2.5 text-[10px] font-bold text-gray-700">🏦 Transfer</span>
+            <span className="flex-1 text-center bg-teal-50 border border-teal-200 rounded-xl py-2.5 text-[10px] font-bold text-teal-700">💵 Cash</span>
           </div>
         </div>
       )}

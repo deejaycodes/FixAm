@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { api } from '../lib';
 
 const urgencyOptions = [
@@ -16,13 +16,22 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
   const [note, setNote] = useState('');
   const [urgency, setUrgency] = useState('today');
   const [address, setAddress] = useState('');
+  const [photos, setPhotos] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [authErr, setAuthErr] = useState('');
-  const [hasGPS, setHasGPS] = useState(true);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const addPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { if (reader.result) setPhotos(p => [...p, reader.result as string]); };
+    reader.readAsDataURL(file);
+  };
 
   const doSubmit = async (t: string) => {
     setLoading(true);
@@ -32,7 +41,7 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
         try {
           const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 }));
           loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        } catch { setHasGPS(false); }
+        } catch {}
       }
       const fullDesc = [
         desc.trim(),
@@ -45,6 +54,13 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
         body: JSON.stringify({ serviceType: params.serviceType, description: fullDesc, location: loc, emergency: urgency === 'now' || params.serviceType === 'emergency' }),
         headers: { Authorization: `Bearer ${t}` },
       });
+      // Upload photos if any
+      for (const photo of photos) {
+        await api(`/api/requests/${res.id}/photo`, {
+          method: 'POST', body: JSON.stringify({ photo }),
+          headers: { Authorization: `Bearer ${t}` },
+        }).catch(() => {});
+      }
       nav('status', { requestId: res.id });
     } catch (e: any) { alert(e.message); }
     setLoading(false);
@@ -71,7 +87,6 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
     } catch (e: any) { setAuthErr(e.message); setLoading(false); }
   };
 
-  // Confirmation overlay
   if (showConfirm && !showAuth) return (
     <div className="animate-in px-5 pt-16">
       <h2 className="text-xl font-bold text-gray-900 mb-6">Confirm your request</h2>
@@ -79,6 +94,7 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
         <div className="flex justify-between"><span className="text-sm text-gray-500">Service</span><span className="text-sm font-bold text-gray-900">{params.serviceIcon} {params.serviceName}</span></div>
         <div className="flex justify-between"><span className="text-sm text-gray-500">Urgency</span><span className="text-sm font-bold text-gray-900">{urgencyOptions.find(u => u.id === urgency)?.label}</span></div>
         {address && <div className="flex justify-between"><span className="text-sm text-gray-500">Address</span><span className="text-sm font-bold text-gray-900 text-right max-w-[60%]">{address}</span></div>}
+        {photos.length > 0 && <div className="flex justify-between"><span className="text-sm text-gray-500">Photos</span><span className="text-sm font-bold text-gray-900">{photos.length} attached</span></div>}
         <div className="border-t border-gray-200 pt-3"><p className="text-sm text-gray-700">{desc}</p></div>
         {note && <p className="text-xs text-gray-500 italic">{note}</p>}
       </div>
@@ -104,7 +120,6 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
         </div>
       </div>
 
-      {/* Urgency */}
       <label className="text-sm font-semibold text-gray-800 mb-2 block">When do you need this?</label>
       <div className="flex gap-2 mb-5">
         {urgencyOptions.map(u => (
@@ -133,10 +148,23 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
       <input className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-teal-200 placeholder-gray-400 shadow-sm"
         placeholder="Or type: e.g. Opposite Shoprite, Ikeja" value={address} onChange={e => setAddress(e.target.value)} />
 
-      <button className="flex items-center gap-2 mt-3 text-sm text-gray-500 font-medium active:text-teal-600 transition">
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-        Add photo
+      {/* Photos */}
+      <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={addPhoto} />
+      <button onClick={() => fileRef.current?.click()} className="flex items-center gap-2 mt-4 text-sm text-teal-600 font-semibold active:opacity-70 transition">
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+        📸 Add photo {photos.length > 0 && `(${photos.length})`}
       </button>
+      {photos.length > 0 && (
+        <div className="flex gap-2 mt-2 overflow-x-auto no-scrollbar">
+          {photos.map((p, i) => (
+            <div key={i} className="relative flex-shrink-0">
+              <img src={p} className="w-16 h-16 rounded-xl object-cover border-2 border-gray-100" />
+              <button onClick={() => setPhotos(photos.filter((_, j) => j !== i))}
+                className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center">×</button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {showAuth && !token && (
         <div className="mt-5 bg-white border border-gray-200 rounded-2xl p-4 shadow-sm animate-in">

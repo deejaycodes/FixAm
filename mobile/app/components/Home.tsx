@@ -77,6 +77,27 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
         ))}
       </div>
 
+      {/* Popular near you */}
+      <div className="px-5 mt-5">
+        <h3 className="text-sm font-bold text-gray-900 mb-2">🔥 Popular near you</h3>
+        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+          {[
+            { label: 'Generator Repair', icon: '⚙️', id: 'generator', tag: 'Most booked' },
+            { label: 'AC Servicing', icon: '❄️', id: 'ac_repair', tag: 'Trending' },
+            { label: 'Plumbing', icon: '🔧', id: 'plumbing', tag: 'Quick fix' },
+          ].map(p => (
+            <button key={p.id} onClick={() => nav('new', { serviceType: p.id, serviceName: p.label, serviceIcon: p.icon })}
+              className="flex-shrink-0 bg-gray-900 rounded-xl px-4 py-3 flex items-center gap-2.5 active:scale-95 transition">
+              <span className="text-xl">{p.icon}</span>
+              <div className="text-left">
+                <p className="text-xs font-bold text-white">{p.label}</p>
+                <p className="text-[9px] text-teal-400 font-semibold">{p.tag}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Services */}
       <div className="px-5 mt-6">
         <h3 className="text-sm font-bold text-gray-900 mb-3">Services</h3>

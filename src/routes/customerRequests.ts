@@ -3,6 +3,7 @@ import { ServiceRequest, Artisan, Customer } from '../models';
 import { findBestArtisan } from '../services/matching';
 import { estimatePrice, applyLoyaltyDiscount } from '../services/pricing';
 import { sendMessage, sendButtons } from '../services/whatsapp';
+import { initializePayment } from '../services/paystack';
 
 const router = Router();
 
@@ -82,6 +83,41 @@ router.post('/:id/rate', async (req: Request, res: Response) => {
     await Artisan.update({ rating: parseFloat(stats?.avgRating) || 0 }, { where: { id: request.ArtisanId } });
   }
   res.json({ success: true });
+});
+
+// Pay via Paystack
+router.post('/:id/pay', async (req: Request, res: Response) => {
+  const request = await ServiceRequest.findByPk(req.params.id as string, { include: [Artisan] });
+  if (!request || request.CustomerId !== (req as any).customerId) {
+    res.status(404).json({ error: 'Not found' }); return;
+  }
+  if (!request.estimatedPrice) { res.status(400).json({ error: 'No price set' }); return; }
+  const customer = await Customer.findByPk((req as any).customerId);
+  const ref = `fixam_${request.id}_${Date.now()}`;
+  try {
+    const payment = await initializePayment({
+      email: `${customer?.phone || 'customer'}@fixam.ng`,
+      amount: request.estimatedPrice,
+      reference: ref,
+      callbackUrl: 'https://out-one-red.vercel.app',
+      subaccountCode: (request.Artisan as any)?.paystackSubaccount || undefined,
+    });
+    res.json({ url: payment.authorization_url, reference: payment.reference });
+  } catch (e: any) { res.status(500).json({ error: 'Payment init failed' }); }
+});
+
+// Upload photo
+router.post('/:id/photo', async (req: Request, res: Response) => {
+  const request = await ServiceRequest.findByPk(req.params.id as string);
+  if (!request || request.CustomerId !== (req as any).customerId) {
+    res.status(404).json({ error: 'Not found' }); return;
+  }
+  const { photo } = req.body; // base64 string
+  if (!photo) { res.status(400).json({ error: 'Photo required' }); return; }
+  const photos = request.photos || [];
+  photos.push(photo);
+  await request.update({ photos });
+  res.json({ success: true, count: photos.length });
 });
 
 // Cancel

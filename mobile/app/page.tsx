@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Onboarding from './components/Onboarding';
 import Login from './components/Login';
 import Home from './components/Home';
 import NewRequest from './components/NewRequest';
@@ -18,21 +19,25 @@ export default function App() {
   const [user, setUser] = useState<any>(null);
   const [screen, setScreen] = useState('home');
   const [params, setParams] = useState<any>({});
+  const [onboarded, setOnboarded] = useState(true); // default true, check in useEffect
 
   useEffect(() => {
     const d = localStorage.getItem('fixam_auth');
     if (d) { const p = JSON.parse(d); setToken(p.token); setUser(p.user); }
+    if (!localStorage.getItem('fixam_onboarded')) setOnboarded(false);
+    // Register service worker for push notifications
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
   }, []);
 
+  const finishOnboarding = () => { setOnboarded(true); localStorage.setItem('fixam_onboarded', '1'); };
   const login = (t: string, u: any) => { setToken(t); setUser(u); localStorage.setItem('fixam_auth', JSON.stringify({ token: t, user: u })); };
   const logout = () => { setToken(null); setUser(null); localStorage.removeItem('fixam_auth'); setScreen('home'); };
   const nav = (s: string, p?: any) => { setScreen(s); if (p) setParams(p); window.scrollTo(0, 0); };
 
-  // Guest guard — redirect to login for screens that need auth
+  if (!onboarded) return <Onboarding onDone={finishOnboarding} />;
+
   const needsAuth = ['activity', 'profile', 'status'].includes(screen);
-  if (needsAuth && !token) {
-    return <Login onLogin={(t, u) => { login(t, u); /* stay on intended screen */ }} />;
-  }
+  if (needsAuth && !token) return <Login onLogin={(t, u) => { login(t, u); }} />;
 
   const isDetail = ['new', 'status'].includes(screen);
 

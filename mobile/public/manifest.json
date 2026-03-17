@@ -1,1 +1,13 @@
-{ "name": "FixAm", "short_name": "FixAm", "start_url": "/", "display": "standalone", "background_color": "#ffffff", "theme_color": "#0D9488" }
+{
+  "name": "FixAm - Find Trusted Artisans",
+  "short_name": "FixAm",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#0D9488",
+  "description": "Book verified plumbers, electricians, and technicians in Lagos. Transparent pricing, real-time tracking, and a satisfaction guarantee.",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
