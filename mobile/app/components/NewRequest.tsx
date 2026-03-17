@@ -26,6 +26,7 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
   const [forOther, setForOther] = useState(false);
   const [otherName, setOtherName] = useState('');
   const [otherPhone, setOtherPhone] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [authErr, setAuthErr] = useState('');
@@ -42,11 +43,18 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
   const doSubmit = async (t: string) => {
     setLoading(true);
     try {
-      let loc = { lat: 6.5244, lng: 3.3792 };
-      if ('geolocation' in navigator) {
+      let loc = { lat: 6.5244, lng: 3.3792 }; // Default: Lagos
+      if (!forOther && 'geolocation' in navigator) {
         try {
           const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 }));
           loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        } catch {}
+      }
+      if (forOther && address.trim()) {
+        // Geocode the typed address
+        try {
+          const geo = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address.trim())}&countrycodes=ng,gh&format=json&limit=1`).then(r => r.json());
+          if (geo[0]) loc = { lat: parseFloat(geo[0].lat), lng: parseFloat(geo[0].lon) };
         } catch {}
       }
       const fullDesc = [
@@ -171,12 +179,34 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
 
       {/* Location */}
       <label className="text-sm font-semibold text-gray-800 mt-4 mb-2 block">Location</label>
-      <div className="flex items-center gap-2 bg-green-50 border border-green-200/50 rounded-xl px-4 py-3 mb-2">
-        <span className="w-2 h-2 bg-green-500 rounded-full pulse-dot" />
-        <span className="text-xs text-green-700 font-medium">📍 Using your GPS location</span>
+      {!forOther && (
+        <div className="flex items-center gap-2 bg-green-50 border border-green-200/50 rounded-xl px-4 py-3 mb-2">
+          <span className="w-2 h-2 bg-green-500 rounded-full pulse-dot" />
+          <span className="text-xs text-green-700 font-medium">📍 Using your GPS location</span>
+        </div>
+      )}
+      <div className="relative">
+        <input className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-teal-200 placeholder-gray-400 shadow-sm"
+          placeholder={forOther ? "Their address (e.g. 12 Osu Badu St, East Legon)" : "Or type: e.g. Opposite Shoprite, Ikeja"}
+          value={address} onChange={e => {
+            setAddress(e.target.value);
+            const q = e.target.value.trim();
+            if (q.length >= 3) {
+              fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&countrycodes=ng,gh&format=json&limit=4&addressdetails=1`)
+                .then(r => r.json()).then((data: any[]) => setAddressSuggestions(data.map((d: any) => d.display_name))).catch(() => {});
+            } else { setAddressSuggestions([]); }
+          }} />
+        {addressSuggestions.length > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
+            {addressSuggestions.map((s, i) => (
+              <button key={i} onClick={() => { setAddress(s); setAddressSuggestions([]); }}
+                className="w-full text-left px-4 py-2.5 text-xs text-gray-700 hover:bg-gray-50 active:bg-gray-100 border-b border-gray-100 last:border-0 truncate">
+                📍 {s}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
-      <input className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-teal-200 placeholder-gray-400 shadow-sm"
-        placeholder="Or type: e.g. Opposite Shoprite, Ikeja" value={address} onChange={e => setAddress(e.target.value)} />
 
       {/* Book for someone else */}
       <button onClick={() => setForOther(!forOther)}
