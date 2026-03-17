@@ -7,12 +7,12 @@ export async function api(path: string, opts?: RequestInit) {
 }
 
 export const services = [
-  { id: 'plumbing', icon: '🔧', name: 'Plumbing', desc: 'Pipes & drainage', bg: 'bg-teal-200' },
-  { id: 'electrical', icon: '⚡', name: 'Electrical', desc: 'Wiring & lights', bg: 'bg-amber-200' },
-  { id: 'ac_repair', icon: '❄️', name: 'AC Repair', desc: 'Cooling systems', bg: 'bg-blue-200' },
-  { id: 'generator', icon: '⚙️', name: 'Generator', desc: 'Power solutions', bg: 'bg-orange-200' },
-  { id: 'carpentry', icon: '🪚', name: 'Carpentry', desc: 'Wood & furniture', bg: 'bg-violet-200' },
-  { id: 'emergency', icon: '🚨', name: 'Emergency', desc: '24/7 urgent help', bg: 'bg-red-200' },
+  { id: 'plumbing', icon: '🔧', name: 'Plumbing', desc: 'Pipes & drainage', bg: 'bg-teal-200', from: '₦5k' },
+  { id: 'electrical', icon: '⚡', name: 'Electrical', desc: 'Wiring & lights', bg: 'bg-amber-200', from: '₦4k' },
+  { id: 'ac_repair', icon: '❄️', name: 'AC Repair', desc: 'Cooling systems', bg: 'bg-blue-200', from: '₦8k' },
+  { id: 'generator', icon: '⚙️', name: 'Generator', desc: 'Power solutions', bg: 'bg-orange-200', from: '₦6k' },
+  { id: 'carpentry', icon: '🪚', name: 'Carpentry', desc: 'Wood & furniture', bg: 'bg-violet-200', from: '₦7k' },
+  { id: 'emergency', icon: '🚨', name: 'Emergency', desc: '24/7 urgent help', bg: 'bg-red-200', from: '₦10k' },
 ];
 
 export const statusMap: Record<string, { icon: string; label: string; color: string; bg: string; step: number }> = {

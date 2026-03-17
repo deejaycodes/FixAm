@@ -1,8 +1,14 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api, services, statusMap, pillColor } from '../lib';
 
 const promos = ['🛡️ Job Guarantee', '⚡ 15min Emergency', '💰 Refer & Earn ₦1k'];
+
+const reviews = [
+  { name: 'Chioma A.', area: 'Lekki', text: 'Plumber came in 20 minutes. Fixed my burst pipe same day. Lifesaver!', rating: 5 },
+  { name: 'Emeka O.', area: 'Ikeja', text: 'AC guy was professional and honest about pricing. Will use again.', rating: 5 },
+  { name: 'Funke B.', area: 'Surulere', text: 'Generator repair at 10pm on a Sunday. These guys are serious!', rating: 4 },
+];
 
 export default function Home({ nav, token, user }: { nav: (s: string, p?: any) => void; token: string | null; user: any }) {
   const [recent, setRecent] = useState<any>(null);
@@ -52,10 +58,11 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
                 <button key={s.id} onClick={() => { setQuery(''); nav('new', { serviceType: s.id, serviceName: s.name, serviceIcon: s.icon }); }}
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 text-left border-b border-gray-100 last:border-0">
                   <span className="text-xl">{s.icon}</span>
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-bold text-gray-900">{s.name}</p>
                     <p className="text-xs text-gray-500">{s.desc}</p>
                   </div>
+                  <span className="text-xs text-teal-600 font-bold">from {s.from}</span>
                 </button>
               ))}
             </div>
@@ -76,21 +83,21 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
         <div className="grid grid-cols-3 gap-3">
           {services.map(s => (
             <button key={s.id} onClick={() => nav('new', { serviceType: s.id, serviceName: s.name, serviceIcon: s.icon })}
-              className="flex flex-col items-center p-4 rounded-2xl border-2 border-gray-100 bg-white shadow-sm active:scale-95 transition">
+              className="flex flex-col items-center p-3.5 rounded-2xl border-2 border-gray-100 bg-white shadow-sm active:scale-95 transition">
               <div className={`w-12 h-12 ${s.bg} rounded-xl flex items-center justify-center text-2xl mb-2`}>{s.icon}</div>
               <span className="font-bold text-xs text-gray-900">{s.name}</span>
-              <span className="text-[10px] text-gray-500 mt-0.5">{s.desc}</span>
+              <span className="text-[10px] text-teal-600 font-semibold mt-0.5">from {s.from}</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Recent */}
+      {/* Recent booking */}
       {recent && (
         <div className="px-5 mt-6 animate-in-delay">
           <h3 className="text-sm font-bold text-gray-900 mb-3">Recent</h3>
           <button onClick={() => nav('status', { requestId: recent.id })}
-            className="w-full bg-white border-2 border-gray-100 shadow-sm rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.98] active:border-teal-400 transition">
+            className="w-full bg-white border-2 border-gray-100 shadow-sm rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.98] transition">
             <div className="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center text-lg">
               {services.find(s => s.id === recent.serviceType)?.icon || '📋'}
             </div>
@@ -104,6 +111,49 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
           </button>
         </div>
       )}
+
+      {/* Social proof */}
+      <div className="px-5 mt-6">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-gray-900">What Lagos is saying</h3>
+          <span className="text-[10px] text-gray-400 font-semibold">1,200+ jobs done</span>
+        </div>
+        <div className="flex gap-3 overflow-x-auto no-scrollbar">
+          {reviews.map(r => (
+            <div key={r.name} className="flex-shrink-0 w-64 bg-gray-50 border border-gray-100 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center text-xs font-bold text-white">{r.name[0]}</div>
+                <div>
+                  <p className="text-xs font-bold text-gray-900">{r.name}</p>
+                  <p className="text-[10px] text-gray-400">{r.area}</p>
+                </div>
+                <span className="ml-auto text-xs">{'⭐'.repeat(r.rating)}</span>
+              </div>
+              <p className="text-xs text-gray-600 leading-relaxed">&ldquo;{r.text}&rdquo;</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Trust bar */}
+      <div className="px-5 mt-6 mb-4">
+        <div className="bg-gray-900 rounded-2xl p-4 flex items-center justify-around">
+          <div className="text-center">
+            <p className="text-white font-extrabold text-lg">500+</p>
+            <p className="text-gray-400 text-[10px]">Verified Artisans</p>
+          </div>
+          <div className="w-px h-8 bg-gray-700" />
+          <div className="text-center">
+            <p className="text-white font-extrabold text-lg">4.8⭐</p>
+            <p className="text-gray-400 text-[10px]">Avg Rating</p>
+          </div>
+          <div className="w-px h-8 bg-gray-700" />
+          <div className="text-center">
+            <p className="text-white font-extrabold text-lg">₦0</p>
+            <p className="text-gray-400 text-[10px]">Booking Fee</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

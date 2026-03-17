@@ -31,7 +31,7 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
   useEffect(() => {
     const load = () => api(`/api/requests/${params.requestId}`, { headers: { Authorization: `Bearer ${token}` } }).then(setReq).catch(() => {});
     load();
-    const i = setInterval(load, 5000);
+    const i = setInterval(load, 15000);
     return () => clearInterval(i);
   }, [params.requestId, token]);
 
@@ -131,6 +131,24 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
           try { await api(`/api/requests/${params.requestId}/cancel`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); nav('home'); }
           catch (e: any) { alert(e.message); }
         }}>Cancel Request</button>
+      )}
+
+      {req.status === 'completed' && req.rating && (
+        <button onClick={() => nav('new', { serviceType: req.serviceType, serviceName: req.serviceType?.replace('_', ' '), serviceIcon: '🔧' })}
+          className="w-full bg-teal-50 border border-teal-200 text-teal-700 rounded-2xl py-3 text-sm font-bold mt-4 active:scale-[0.98] transition">
+          🔄 Book Again
+        </button>
+      )}
+
+      {req.estimatedPrice && isActive && (
+        <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 mt-4">
+          <p className="text-xs font-semibold text-gray-500 mb-2">Payment options</p>
+          <div className="flex gap-2">
+            <span className="flex-1 text-center bg-white border border-gray-200 rounded-xl py-2 text-[10px] font-bold text-gray-700">💳 Paystack</span>
+            <span className="flex-1 text-center bg-white border border-gray-200 rounded-xl py-2 text-[10px] font-bold text-gray-700">🏦 Transfer</span>
+            <span className="flex-1 text-center bg-white border border-gray-200 rounded-xl py-2 text-[10px] font-bold text-gray-700">💵 Cash</span>
+          </div>
+        </div>
       )}
     </div>
   );

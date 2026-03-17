@@ -2,17 +2,27 @@
 import { useState } from 'react';
 import { api } from '../lib';
 
+const urgencyOptions = [
+  { id: 'now', label: '🔴 Now', desc: 'ASAP' },
+  { id: 'today', label: '🟡 Today', desc: 'Within hours' },
+  { id: 'flexible', label: '🟢 Flexible', desc: 'This week' },
+];
+
 export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
   nav: (s: string, p?: any) => void; token: string | null; user: any; params: any;
   onNeedAuth: (token: string, user: any) => void;
 }) {
   const [desc, setDesc] = useState('');
   const [note, setNote] = useState('');
+  const [urgency, setUrgency] = useState('today');
+  const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [authErr, setAuthErr] = useState('');
+  const [hasGPS, setHasGPS] = useState(true);
 
   const doSubmit = async (t: string) => {
     setLoading(true);
@@ -22,12 +32,17 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
         try {
           const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 }));
           loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        } catch {}
+        } catch { setHasGPS(false); }
       }
-      const fullDesc = note.trim() ? `${desc.trim()}\n\nAdditional notes: ${note.trim()}` : desc.trim();
+      const fullDesc = [
+        desc.trim(),
+        note.trim() ? `Additional notes: ${note.trim()}` : '',
+        address.trim() ? `Address: ${address.trim()}` : '',
+        `Urgency: ${urgency}`,
+      ].filter(Boolean).join('\n\n');
       const res = await api('/api/requests', {
         method: 'POST',
-        body: JSON.stringify({ serviceType: params.serviceType, description: fullDesc, location: loc, emergency: params.serviceType === 'emergency' }),
+        body: JSON.stringify({ serviceType: params.serviceType, description: fullDesc, location: loc, emergency: urgency === 'now' || params.serviceType === 'emergency' }),
         headers: { Authorization: `Bearer ${t}` },
       });
       nav('status', { requestId: res.id });
@@ -37,26 +52,47 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
 
   const submit = async () => {
     if (!desc.trim()) return;
-    if (token) return doSubmit(token);
-    setShowAuth(true);
+    if (!token) { setShowAuth(true); return; }
+    setShowConfirm(true);
   };
+
+  const confirmSubmit = () => doSubmit(token!);
 
   const quickRegister = async () => {
     if (!phone.trim() || phone.length < 10) { setAuthErr('Enter a valid phone number'); return; }
     setAuthErr('');
     setLoading(true);
     try {
-      // Try login first, fall back to register
       let res;
-      try {
-        res = await api('/api/customer/login', { method: 'POST', body: JSON.stringify({ phone: phone.trim() }) });
-      } catch {
-        res = await api('/api/customer/register', { method: 'POST', body: JSON.stringify({ phone: phone.trim(), name: name.trim() || undefined }) });
-      }
+      try { res = await api('/api/customer/login', { method: 'POST', body: JSON.stringify({ phone: phone.trim() }) }); }
+      catch { res = await api('/api/customer/register', { method: 'POST', body: JSON.stringify({ phone: phone.trim(), name: name.trim() || undefined }) }); }
       onNeedAuth(res.token, res.customer);
       await doSubmit(res.token);
     } catch (e: any) { setAuthErr(e.message); setLoading(false); }
   };
+
+  // Confirmation overlay
+  if (showConfirm && !showAuth) return (
+    <div className="animate-in px-5 pt-16">
+      <h2 className="text-xl font-bold text-gray-900 mb-6">Confirm your request</h2>
+      <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 space-y-3">
+        <div className="flex justify-between"><span className="text-sm text-gray-500">Service</span><span className="text-sm font-bold text-gray-900">{params.serviceIcon} {params.serviceName}</span></div>
+        <div className="flex justify-between"><span className="text-sm text-gray-500">Urgency</span><span className="text-sm font-bold text-gray-900">{urgencyOptions.find(u => u.id === urgency)?.label}</span></div>
+        {address && <div className="flex justify-between"><span className="text-sm text-gray-500">Address</span><span className="text-sm font-bold text-gray-900 text-right max-w-[60%]">{address}</span></div>}
+        <div className="border-t border-gray-200 pt-3"><p className="text-sm text-gray-700">{desc}</p></div>
+        {note && <p className="text-xs text-gray-500 italic">{note}</p>}
+      </div>
+      <button onClick={confirmSubmit} disabled={loading}
+        className="w-full bg-teal-600 text-white rounded-2xl py-4 font-bold text-sm mt-6 disabled:opacity-40 active:scale-[0.98] transition shadow-lg shadow-teal-600/20">
+        {loading ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Finding artisan...
+          </span>
+        ) : 'Confirm & Find Artisan →'}
+      </button>
+      <button onClick={() => setShowConfirm(false)} className="w-full text-gray-500 text-sm font-medium mt-3 py-2">← Edit request</button>
+    </div>
+  );
 
   return (
     <div className="animate-in px-5 pt-16">
@@ -68,23 +104,39 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
         </div>
       </div>
 
+      {/* Urgency */}
+      <label className="text-sm font-semibold text-gray-800 mb-2 block">When do you need this?</label>
+      <div className="flex gap-2 mb-5">
+        {urgencyOptions.map(u => (
+          <button key={u.id} onClick={() => setUrgency(u.id)}
+            className={`flex-1 py-2.5 rounded-xl text-center text-xs font-bold transition border-2 ${urgency === u.id ? 'border-teal-600 bg-teal-50 text-teal-700' : 'border-gray-100 bg-white text-gray-500'}`}>
+            {u.label}
+            <span className="block text-[9px] font-medium mt-0.5 opacity-70">{u.desc}</span>
+          </button>
+        ))}
+      </div>
+
       <label className="text-sm font-semibold text-gray-800 mb-2 block">What&apos;s the problem?</label>
-      <textarea className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-300 min-h-[120px] resize-none placeholder-gray-400 shadow-sm"
+      <textarea className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-300 min-h-[100px] resize-none placeholder-gray-400 shadow-sm"
         placeholder="e.g. My kitchen tap is leaking badly..." value={desc} onChange={e => setDesc(e.target.value)} />
 
       <label className="text-sm font-semibold text-gray-800 mt-4 mb-2 block">Additional notes <span className="text-gray-400 font-normal">(optional)</span></label>
-      <textarea className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-300 min-h-[70px] resize-none placeholder-gray-400 shadow-sm"
-        placeholder="Preferred time, access instructions, budget range..." value={note} onChange={e => setNote(e.target.value)} />
+      <textarea className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-300 min-h-[60px] resize-none placeholder-gray-400 shadow-sm"
+        placeholder="Budget range, preferred time, access instructions..." value={note} onChange={e => setNote(e.target.value)} />
+
+      {/* Location */}
+      <label className="text-sm font-semibold text-gray-800 mt-4 mb-2 block">Location</label>
+      <div className="flex items-center gap-2 bg-green-50 border border-green-200/50 rounded-xl px-4 py-3 mb-2">
+        <span className="w-2 h-2 bg-green-500 rounded-full pulse-dot" />
+        <span className="text-xs text-green-700 font-medium">📍 Using your GPS location</span>
+      </div>
+      <input className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-teal-200 placeholder-gray-400 shadow-sm"
+        placeholder="Or type: e.g. Opposite Shoprite, Ikeja" value={address} onChange={e => setAddress(e.target.value)} />
 
       <button className="flex items-center gap-2 mt-3 text-sm text-gray-500 font-medium active:text-teal-600 transition">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
         Add photo
       </button>
-
-      <div className="flex items-center gap-2 mt-5 bg-green-50 border border-green-200/50 rounded-xl px-4 py-3">
-        <span className="w-2 h-2 bg-green-500 rounded-full pulse-dot" />
-        <span className="text-xs text-green-700 font-medium">📍 Using your current location</span>
-      </div>
 
       {showAuth && !token && (
         <div className="mt-5 bg-white border border-gray-200 rounded-2xl p-4 shadow-sm animate-in">
@@ -99,8 +151,7 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
             className="w-full bg-teal-600 text-white rounded-xl py-3 font-bold text-sm mt-3 disabled:opacity-40 active:scale-[0.98] transition">
             {loading ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Finding artisan...
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Finding artisan...
               </span>
             ) : 'Continue & Find Artisan →'}
           </button>
@@ -110,12 +161,7 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
       {!showAuth && (
         <button onClick={submit} disabled={loading || !desc.trim()}
           className="w-full bg-teal-600 text-white rounded-2xl py-4 font-bold text-sm mt-6 disabled:opacity-40 active:scale-[0.98] transition shadow-lg shadow-teal-600/20">
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Finding artisan...
-            </span>
-          ) : 'Find Artisan →'}
+          Review & Submit →
         </button>
       )}
     </div>

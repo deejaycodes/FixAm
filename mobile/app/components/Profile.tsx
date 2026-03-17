@@ -24,12 +24,16 @@ export default function Profile({ user, logout }: { user: any; logout: () => voi
       {user?.referralCode && (
         <div className="bg-gradient-to-r from-teal-50 to-teal-100/50 rounded-2xl p-5 mb-4">
           <p className="text-xs font-semibold text-teal-700 mb-2">🎁 Refer & Earn ₦1,000</p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mb-3">
             <div className="flex-1 bg-white rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-teal-700 tracking-wider">{user.referralCode}</div>
             <button onClick={copyCode} className="bg-teal-600 text-white rounded-xl px-4 py-2.5 text-sm font-semibold active:scale-95 transition">
               {copied ? '✓' : 'Copy'}
             </button>
           </div>
+          <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Use my FixAm code ${user.referralCode} and get ₦1,000 off your first artisan booking! Download: https://out-one-red.vercel.app`)}`, '_blank')}
+            className="w-full bg-green-600 text-white rounded-xl py-2.5 text-sm font-bold active:scale-95 transition">
+            💬 Share on WhatsApp
+          </button>
         </div>
       )}
 
