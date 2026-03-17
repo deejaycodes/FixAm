@@ -23,6 +23,9 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
   const dateRef = useRef<HTMLInputElement>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [forOther, setForOther] = useState(false);
+  const [otherName, setOtherName] = useState('');
+  const [otherPhone, setOtherPhone] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [authErr, setAuthErr] = useState('');
@@ -50,6 +53,7 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
         desc.trim(),
         note.trim() ? `Additional notes: ${note.trim()}` : '',
         address.trim() ? `Address: ${address.trim()}` : '',
+        forOther ? `📞 Contact on-site: ${otherName.trim() || 'N/A'} — ${otherPhone.trim()}` : '',
         `Urgency: ${urgency}`,
       ].filter(Boolean).join('\n\n');
       const res = await api('/api/requests', {
@@ -99,6 +103,7 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
         {address && <div className="flex justify-between"><span className="text-sm text-gray-500">Address</span><span className="text-sm font-bold text-gray-900 text-right max-w-[60%]">{address}</span></div>}
         {scheduledAt && <div className="flex justify-between"><span className="text-sm text-gray-500">Scheduled</span><span className="text-sm font-bold text-gray-900">{new Date(scheduledAt).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' })}</span></div>}
         {photos.length > 0 && <div className="flex justify-between"><span className="text-sm text-gray-500">Photos</span><span className="text-sm font-bold text-gray-900">{photos.length} attached</span></div>}
+        {forOther && <div className="flex justify-between"><span className="text-sm text-gray-500">On-site contact</span><span className="text-sm font-bold text-gray-900 text-right">{otherName || 'N/A'} · {otherPhone}</span></div>}
         <div className="border-t border-gray-200 pt-3"><p className="text-sm text-gray-700">{desc}</p></div>
         {note && <p className="text-xs text-gray-500 italic">{note}</p>}
       </div>
@@ -172,6 +177,24 @@ export default function NewRequest({ nav, token, user, params, onNeedAuth }: {
       </div>
       <input className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-teal-200 placeholder-gray-400 shadow-sm"
         placeholder="Or type: e.g. Opposite Shoprite, Ikeja" value={address} onChange={e => setAddress(e.target.value)} />
+
+      {/* Book for someone else */}
+      <button onClick={() => setForOther(!forOther)}
+        className={`flex items-center gap-2 mt-5 text-sm font-semibold transition ${forOther ? 'text-teal-700' : 'text-gray-500'}`}>
+        <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center text-xs transition ${forOther ? 'border-teal-600 bg-teal-600 text-white' : 'border-gray-300'}`}>
+          {forOther ? '✓' : ''}
+        </span>
+        🏠 Booking for someone else
+      </button>
+      {forOther && (
+        <div className="mt-2 space-y-2 animate-in">
+          <input className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-teal-200 placeholder-gray-400 shadow-sm"
+            placeholder="Their name (e.g. Mum, Aunty Ama)" value={otherName} onChange={e => setOtherName(e.target.value)} />
+          <input className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-teal-200 placeholder-gray-400 shadow-sm"
+            placeholder="Their phone number (artisan will call them)" type="tel" value={otherPhone} onChange={e => setOtherPhone(e.target.value)} />
+          <p className="text-[10px] text-gray-400">The artisan will contact this person on arrival.</p>
+        </div>
+      )}
 
       {/* Photos */}
       <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={addPhoto} />
