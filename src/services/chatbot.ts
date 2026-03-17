@@ -4,10 +4,10 @@ import { findBestArtisan } from './matching';
 import { getSession, setSession, deleteSession, Session } from './sessions';
 import { transcribeVoiceNote } from './transcription';
 import { applyReferralCode } from './referral';
-import { createSubaccount } from './paystack';
+import { createSubaccount, initializePayment } from './paystack';
 import { isPremium } from './subscription';
 import { requestQuotes, submitQuote, getQuotesForRequest, acceptQuote } from './quotes';
-import { Customer, Artisan, ServiceRequest, Quote, Message } from '../models';
+import { Customer, Artisan, ServiceRequest, Quote, Message, Payment } from '../models';
 import { sendPushToCustomer } from './push';
 import { fn, col, Op } from 'sequelize';
 import type { WhatsAppMessage } from './types';
@@ -125,6 +125,43 @@ async function handleArtisanCommands(from: string, artisan: InstanceType<typeof 
     return true;
   }
 
+  // Artisan marks job done with final price: "done 15000"
+  if (text.startsWith('done')) {
+    const priceStr = text.replace('done', '').trim();
+    const price = parseInt(priceStr);
+    const activeJob = await ServiceRequest.findOne({
+      where: { ArtisanId: artisan.id, status: { [Op.in]: ['accepted', 'in_progress'] } },
+      order: [['createdAt', 'DESC']],
+      include: [Customer],
+    });
+    if (!activeJob) { await sendMessage(from, 'No active job to complete.'); return true; }
+    if (!price || price < 500) { await sendMessage(from, '💰 Usage: "done 15000" (enter the final price in Naira)'); return true; }
+    await activeJob.update({ status: 'completed', completedAt: new Date(), finalPrice: price * 100 });
+    await sendMessage(from, `✅ Job marked complete! Final price: ₦${price.toLocaleString()}\nWaiting for customer to pay and rate.`);
+    // Send payment link to customer
+    const customer = activeJob.Customer;
+    if (customer) {
+      try {
+        const ref = `fixam_after_${activeJob.id}_${Date.now()}`;
+        const payment = await initializePayment({
+          email: `${customer.phone || 'customer'}@fixam.ng`, amount: price * 100, reference: ref,
+          callbackUrl: 'https://out-one-red.vercel.app',
+          subaccountCode: artisan.paystackSubaccount || undefined,
+        });
+        await Payment.create({ amount: price * 100, ServiceRequestId: activeJob.id, paystackRef: ref, status: 'pending' });
+        if (customer.whatsappId) {
+          await sendMessage(customer.whatsappId, `✅ ${artisan.name} has completed your ${activeJob.serviceType} job!\n\n💰 Final price: ₦${price.toLocaleString()}\n\n💳 Pay now: ${payment.authorization_url}\n\nOr pay cash directly. Please rate 1-5 when done.`);
+        }
+        sendPushToCustomer(customer.id, { title: '✅ Job Complete!', body: `${artisan.name} finished. Pay ₦${price.toLocaleString()} to complete.`, url: '/' }).catch(() => {});
+      } catch { 
+        if (customer.whatsappId) {
+          await sendMessage(customer.whatsappId, `✅ ${artisan.name} has completed your ${activeJob.serviceType} job!\n\n💰 Final price: ₦${price.toLocaleString()}\nPlease pay the artisan directly and rate 1-5.`);
+        }
+      }
+    }
+    return true;
+  }
+
   // Handle quote price submission (number only)
   if (/^\d+$/.test(text)) {
     const price = parseInt(text);
@@ -138,7 +175,7 @@ async function handleArtisanCommands(from: string, artisan: InstanceType<typeof 
   }
 
   if (text === 'help') {
-    await sendMessage(from, `👷 Artisan Commands:\n\n"earnings" — view your earnings\n"jobs" — recent job history\n"bank" — set up bank for direct payments\n"online" / "offline" — toggle availability\n"accept" / "decline" — respond to job\n"profile" — your shareable profile link\n"share location" / "stop sharing" — GPS tracking\n"help" — show this menu\n\n📸 Send photos during a job\n💰 Reply with a number to submit a quote`);
+    await sendMessage(from, `👷 Artisan Commands:\n\n"earnings" — view your earnings\n"jobs" — recent job history\n"done 15000" — mark job complete with final price\n"bank" — set up bank for direct payments\n"online" / "offline" — toggle availability\n"accept" / "decline" — respond to job\n"profile" — your shareable profile link\n"share location" / "stop sharing" — GPS tracking\n"help" — show this menu\n\n📸 Send photos during a job\n💰 Reply with a number to submit a quote`);
     return true;
   }
 
@@ -165,7 +202,7 @@ async function handleArtisanCommands(from: string, artisan: InstanceType<typeof 
   }
 
   // Forward artisan text messages to in-app chat
-  if (text && !['earnings','jobs','online','offline','profile','help','accept','decline','share location','stop sharing','bank'].includes(text)) {
+  if (text && !['earnings','jobs','online','offline','profile','help','accept','decline','share location','stop sharing','bank'].includes(text) && !text.startsWith('done')) {
     const activeJob = await ServiceRequest.findOne({
       where: { ArtisanId: artisan.id, status: { [Op.in]: ['assigned', 'accepted', 'in_progress'] } },
       order: [['createdAt', 'DESC']],

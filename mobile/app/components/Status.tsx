@@ -278,19 +278,21 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
         </button>
       )}
 
-      {req.estimatedPrice && isActive && (
+      {req.estimatedPrice && (isActive || req.status === 'completed') && (
         <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 mt-4">
-          <p className="text-xs font-semibold text-gray-500 mb-2">Payment options</p>
+          <p className="text-xs font-semibold text-gray-500 mb-2">{req.status === 'completed' && !req.rating ? '💰 Pay for completed job' : 'Payment options'}</p>
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={async () => {
-              try {
-                const { url } = await api(`/api/requests/${params.requestId}/escrow`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
-                window.open(url, '_blank');
-              } catch { /* not configured */ }
-            }} className="text-center bg-teal-50 border-2 border-teal-200 rounded-xl py-2.5 text-[10px] font-bold text-teal-700 active:scale-95 transition">
-              🛡️ Secure Pay
-              <span className="block text-[8px] font-medium text-teal-500 mt-0.5">Held until job done</span>
-            </button>
+            {isActive && (
+              <button onClick={async () => {
+                try {
+                  const { url } = await api(`/api/requests/${params.requestId}/escrow`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+                  window.open(url, '_blank');
+                } catch { /* not configured */ }
+              }} className="text-center bg-teal-50 border-2 border-teal-200 rounded-xl py-2.5 text-[10px] font-bold text-teal-700 active:scale-95 transition">
+                🛡️ Secure Pay
+                <span className="block text-[8px] font-medium text-teal-500 mt-0.5">Held until job done</span>
+              </button>
+            )}
             <button onClick={async () => {
               try {
                 const { url } = await api(`/api/requests/${params.requestId}/pay`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
@@ -303,7 +305,8 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
                 window.open(url, '_blank');
               } catch { /* not configured */ }
             }} className="text-center bg-white border border-gray-200 rounded-xl py-2.5 text-[10px] font-bold text-gray-700 active:scale-95 transition">🏦 Transfer</button>
-            <span className="text-center bg-white border border-gray-200 rounded-xl py-2.5 text-[10px] font-bold text-gray-700">💵 Cash</span>
+            {isActive && <span className="text-center bg-amber-50 border border-amber-200 rounded-xl py-2.5 text-[10px] font-bold text-amber-700">⏳ Pay After Job<span className="block text-[8px] font-medium text-amber-500 mt-0.5">Artisan sets final price</span></span>}
+            {!isActive && <span className="text-center bg-white border border-gray-200 rounded-xl py-2.5 text-[10px] font-bold text-gray-700">💵 Cash</span>}
           </div>
         </div>
       )}
