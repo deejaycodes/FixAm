@@ -22,6 +22,29 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
     { name: 'Funke B.', area: 'Surulere', text: 'Generator repair at 10pm on a Sunday. These guys are serious!', rating: 4 },
   ];
 
+  const [popular, setPopular] = useState([
+    { label: 'Generator Repair', icon: '⚙️', id: 'generator', tag: 'Most booked' },
+    { label: 'AC Servicing', icon: '❄️', id: 'ac_repair', tag: 'Trending' },
+    { label: 'Plumbing', icon: '🔧', id: 'plumbing', tag: 'Quick fix' },
+  ]);
+
+  useEffect(() => {
+    api('/api/popular').then((data: any[]) => {
+      if (data.length >= 3) {
+        const svcMap: Record<string, { label: string; icon: string }> = {
+          plumbing: { label: 'Plumbing', icon: '🔧' }, electrical: { label: 'Electrical', icon: '⚡' },
+          ac_repair: { label: 'AC Servicing', icon: '❄️' }, generator: { label: 'Generator Repair', icon: '⚙️' },
+          carpentry: { label: 'Carpentry', icon: '🪚' }, emergency: { label: 'Emergency', icon: '🚨' },
+        };
+        const tags = ['Most booked', 'Trending', 'Popular'];
+        setPopular(data.map((d: any, i: number) => ({
+          id: d.serviceType, label: svcMap[d.serviceType]?.label || d.serviceType,
+          icon: svcMap[d.serviceType]?.icon || '🔧', tag: tags[i] || '',
+        })));
+      }
+    }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!token) return;
     api('/api/requests/mine', { headers: { Authorization: `Bearer ${token}` } })
@@ -87,11 +110,7 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
       <div className="px-5 mt-5">
         <h3 className="text-sm font-bold text-gray-900 mb-2">🔥 Popular near you</h3>
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
-          {[
-            { label: 'Generator Repair', icon: '⚙️', id: 'generator', tag: 'Most booked' },
-            { label: 'AC Servicing', icon: '❄️', id: 'ac_repair', tag: 'Trending' },
-            { label: 'Plumbing', icon: '🔧', id: 'plumbing', tag: 'Quick fix' },
-          ].map(p => (
+          {popular.map(p => (
             <button key={p.id} onClick={() => nav('new', { serviceType: p.id, serviceName: p.label, serviceIcon: p.icon })}
               className="flex-shrink-0 bg-gray-900 rounded-xl px-4 py-3 flex items-center gap-2.5 active:scale-95 transition">
               <span className="text-xl">{p.icon}</span>

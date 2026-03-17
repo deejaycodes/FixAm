@@ -47,6 +47,23 @@ app.use('/api/analytics', adminAuth, analyticsRoutes);
 app.use('/api/artisans', adminAuth, artisanRoutes);
 
 
+// Public: popular services (no auth)
+app.get('/api/popular', async (_req, res) => {
+  try {
+    const { fn, col, Op } = require('sequelize');
+    const { ServiceRequest } = require('./models');
+    const popular = await ServiceRequest.findAll({
+      attributes: ['serviceType', [fn('COUNT', col('id')), 'count']],
+      where: { status: { [Op.ne]: 'cancelled' } },
+      group: ['serviceType'],
+      order: [[fn('COUNT', col('id')), 'DESC']],
+      limit: 3,
+      raw: true,
+    });
+    res.json(popular);
+  } catch { res.json([]); }
+});
+
 // Health check
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 

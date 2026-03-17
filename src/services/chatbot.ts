@@ -154,6 +154,12 @@ async function handleArtisanCommands(from: string, artisan: InstanceType<typeof 
       await sendMessage(from, `📸 Photo saved (${photos.length} total). Send more or wait for customer rating.`);
       return true;
     }
+    // No active job — save as portfolio photo
+    const portfolio = artisan.portfolioPhotos || [];
+    portfolio.push(message.image.id);
+    await artisan.update({ portfolioPhotos: portfolio });
+    await sendMessage(from, `📸 Added to your portfolio (${portfolio.length} photos). Customers can see these when matched with you.`);
+    return true;
   }
 
   // Forward artisan text messages to in-app chat

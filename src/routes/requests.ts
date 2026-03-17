@@ -33,4 +33,40 @@ router.patch('/:id/complete', async (req: Request, res: Response) => {
   res.json({ request, payment });
 });
 
+// Dispute management
+router.patch('/:id/dispute', async (req: Request, res: Response) => {
+  const request = await ServiceRequest.findByPk(req.params.id as string);
+  if (!request) { res.status(404).json({ error: 'Not found' }); return; }
+  await request.update({ status: 'disputed' as any, review: req.body.reason || 'Dispute raised by admin' });
+  res.json(request);
+});
+
+router.patch('/:id/resolve', async (req: Request, res: Response) => {
+  const request = await ServiceRequest.findByPk(req.params.id as string, { include: [Artisan] });
+  if (!request) { res.status(404).json({ error: 'Not found' }); return; }
+  const { resolution } = req.body; // 'refund' | 'release' | 'redo'
+  if (resolution === 'refund') {
+    await request.update({ status: 'cancelled', review: `Resolved: refund issued. ${req.body.note || ''}` });
+  } else if (resolution === 'redo') {
+    await request.update({ ArtisanId: null, status: 'pending', review: `Resolved: redo with new artisan. ${req.body.note || ''}` });
+  } else {
+    await request.update({ status: 'completed', completedAt: new Date(), review: `Resolved: payment released. ${req.body.note || ''}` });
+  }
+  res.json(request);
+});
+
+// Popular services by area
+router.get('/popular', async (_req: Request, res: Response) => {
+  const { fn, col } = require('sequelize');
+  const popular = await ServiceRequest.findAll({
+    attributes: ['serviceType', [fn('COUNT', col('id')), 'count']],
+    where: { status: { [require('sequelize').Op.ne]: 'cancelled' } },
+    group: ['serviceType'],
+    order: [[fn('COUNT', col('id')), 'DESC']],
+    limit: 3,
+    raw: true,
+  });
+  res.json(popular);
+});
+
 export default router;

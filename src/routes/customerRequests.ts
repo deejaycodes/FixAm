@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { ServiceRequest, Artisan, Customer, Quote, Message } from '../models';
+import { ServiceRequest, Artisan, Customer, Quote, Message, Payment } from '../models';
 import { findBestArtisan } from '../services/matching';
 import { estimatePrice, applyLoyaltyDiscount } from '../services/pricing';
 import { sendMessage, sendButtons } from '../services/whatsapp';
@@ -196,6 +196,45 @@ router.post('/:id/quotes/:quoteId/accept', async (req: Request, res: Response) =
     await sendMessage((quote as any).Artisan.whatsappId, '✅ Your quote was accepted! Please head to the customer.').catch(() => {});
   }
   res.json({ success: true });
+});
+
+// Escrow: pay & hold (customer pays, money held until job confirmed)
+router.post('/:id/escrow', async (req: Request, res: Response) => {
+  const request = await ServiceRequest.findByPk(req.params.id as string);
+  if (!request || request.CustomerId !== (req as any).customerId) {
+    res.status(404).json({ error: 'Not found' }); return;
+  }
+  if (!request.estimatedPrice) { res.status(400).json({ error: 'No price set' }); return; }
+  const customer = await Customer.findByPk((req as any).customerId);
+  const ref = `fixam_escrow_${request.id}_${Date.now()}`;
+  try {
+    const payment = await initializePayment({
+      email: `${customer?.phone || 'customer'}@fixam.ng`,
+      amount: request.estimatedPrice,
+      reference: ref,
+      callbackUrl: 'https://out-one-red.vercel.app',
+      // No subaccount — money stays in FixAm's Paystack balance until released
+    });
+    await Payment.create({ amount: request.estimatedPrice, ServiceRequestId: request.id, paystackRef: ref, status: 'pending' });
+    res.json({ url: payment.authorization_url, reference: payment.reference });
+  } catch { res.status(500).json({ error: 'Payment init failed' }); }
+});
+
+// Escrow: customer confirms job done → release payment to artisan
+router.post('/:id/release', async (req: Request, res: Response) => {
+  const request = await ServiceRequest.findByPk(req.params.id as string, { include: [Artisan] });
+  if (!request || request.CustomerId !== (req as any).customerId) {
+    res.status(404).json({ error: 'Not found' }); return;
+  }
+  const payment = await Payment.findOne({ where: { ServiceRequestId: request.id, status: 'paid' } });
+  if (!payment) { res.status(400).json({ error: 'No held payment found' }); return; }
+  // Transfer 85% to artisan via Paystack Transfers API
+  const artisanAmount = Math.round(payment.amount * 0.85);
+  const commission = payment.amount - artisanAmount;
+  await payment.update({ commission, status: 'paid' });
+  await request.update({ status: 'completed', completedAt: new Date(), finalPrice: payment.amount });
+  // Note: actual Paystack transfer would go here with their Transfers API
+  res.json({ success: true, artisanAmount, commission });
 });
 
 // Transfer payment (bank transfer channel)

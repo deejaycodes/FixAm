@@ -281,20 +281,29 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
       {req.estimatedPrice && isActive && (
         <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 mt-4">
           <p className="text-xs font-semibold text-gray-500 mb-2">Payment options</p>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={async () => {
+              try {
+                const { url } = await api(`/api/requests/${params.requestId}/escrow`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+                window.open(url, '_blank');
+              } catch { /* not configured */ }
+            }} className="text-center bg-teal-50 border-2 border-teal-200 rounded-xl py-2.5 text-[10px] font-bold text-teal-700 active:scale-95 transition">
+              🛡️ Secure Pay
+              <span className="block text-[8px] font-medium text-teal-500 mt-0.5">Held until job done</span>
+            </button>
             <button onClick={async () => {
               try {
                 const { url } = await api(`/api/requests/${params.requestId}/pay`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
                 window.open(url, '_blank');
-              } catch { /* Paystack not configured */ }
-            }} className="flex-1 text-center bg-white border border-gray-200 rounded-xl py-2.5 text-[10px] font-bold text-gray-700 active:scale-95 transition">💳 Pay Online</button>
+              } catch { /* not configured */ }
+            }} className="text-center bg-white border border-gray-200 rounded-xl py-2.5 text-[10px] font-bold text-gray-700 active:scale-95 transition">💳 Pay Online</button>
             <button onClick={async () => {
               try {
                 const { url } = await api(`/api/requests/${params.requestId}/transfer`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
                 window.open(url, '_blank');
               } catch { /* not configured */ }
-            }} className="flex-1 text-center bg-white border border-gray-200 rounded-xl py-2.5 text-[10px] font-bold text-gray-700 active:scale-95 transition">🏦 Transfer</button>
-            <span className="flex-1 text-center bg-teal-50 border border-teal-200 rounded-xl py-2.5 text-[10px] font-bold text-teal-700">💵 Cash</span>
+            }} className="text-center bg-white border border-gray-200 rounded-xl py-2.5 text-[10px] font-bold text-gray-700 active:scale-95 transition">🏦 Transfer</button>
+            <span className="text-center bg-white border border-gray-200 rounded-xl py-2.5 text-[10px] font-bold text-gray-700">💵 Cash</span>
           </div>
         </div>
       )}
