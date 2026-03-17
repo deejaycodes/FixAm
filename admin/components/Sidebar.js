@@ -8,6 +8,9 @@ const NAV = [
   { href: '/requests', label: '📋 Requests' },
   { href: '/artisans', label: '👷 Artisans' },
   { href: '/payments', label: '💳 Payments' },
+  { href: '/referrals', label: '🔗 Referrals' },
+  { href: '/leaderboard', label: '🏆 Leaderboard' },
+  { href: '/broadcast', label: '📢 Broadcast' },
   { href: '/analytics', label: '📈 Analytics' },
   { href: '/disputes', label: '⚠️ Disputes' },
 ];

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { ServiceRequest, Customer, Artisan, Payment } from '../models';
+import { sendMessage } from '../services/whatsapp';
 
 const router = Router();
 
@@ -53,6 +54,53 @@ router.patch('/:id/resolve', async (req: Request, res: Response) => {
     await request.update({ status: 'completed', completedAt: new Date(), review: `Resolved: payment released. ${req.body.note || ''}` });
   }
   res.json(request);
+});
+
+// Referral tracking
+router.get('/referrals', async (_req: Request, res: Response) => {
+  const { fn, col, Op } = require('sequelize');
+  const referrers = await Customer.findAll({
+    where: { referralCode: { [Op.ne]: null } },
+    attributes: ['id', 'name', 'phone', 'referralCode'],
+    raw: true,
+  });
+  const stats = await Promise.all(referrers.map(async (r: any) => {
+    const referred = await Customer.count({ where: { referredBy: r.id } });
+    if (referred === 0) return null;
+    const conversions = await ServiceRequest.count({
+      where: { CustomerId: { [Op.in]: (await Customer.findAll({ where: { referredBy: r.id }, attributes: ['id'], raw: true })).map((c: any) => c.id) }, status: 'completed' },
+    });
+    return { ...r, referred, conversions, conversionRate: referred > 0 ? Math.round(conversions / referred * 100) : 0 };
+  }));
+  res.json(stats.filter(Boolean).sort((a: any, b: any) => b.referred - a.referred));
+});
+
+// WhatsApp broadcast
+router.post('/broadcast', async (req: Request, res: Response) => {
+  const { message, target } = req.body; // target: 'customers' | 'artisans' | 'all'
+  if (!message?.trim()) { res.status(400).json({ error: 'Message required' }); return; }
+  let sent = 0;
+  if (target !== 'artisans') {
+    const customers = await Customer.findAll({ where: { whatsappId: { [require('sequelize').Op.ne]: null } }, attributes: ['whatsappId'], raw: true });
+    for (const c of customers as any[]) { sendMessage(c.whatsappId, message).then(() => sent++).catch(() => {}); }
+  }
+  if (target !== 'customers') {
+    const artisans = await Artisan.findAll({ where: { whatsappId: { [require('sequelize').Op.ne]: null } }, attributes: ['whatsappId'], raw: true });
+    for (const a of artisans as any[]) { sendMessage(a.whatsappId, message).then(() => sent++).catch(() => {}); }
+  }
+  res.json({ success: true, queued: sent });
+});
+
+// Artisan leaderboard
+router.get('/leaderboard', async (_req: Request, res: Response) => {
+  const artisans = await Artisan.findAll({
+    where: { verified: true },
+    attributes: ['id', 'name', 'phone', 'rating', 'totalJobs', 'services', 'available'],
+    order: [['totalJobs', 'DESC'], ['rating', 'DESC']],
+    limit: 50,
+    raw: true,
+  });
+  res.json(artisans);
 });
 
 // Popular services by area
