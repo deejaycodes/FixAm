@@ -15,6 +15,7 @@ interface CustomerAttributes {
   discountUsed: boolean;
   subscriptionTier: 'free' | 'premium';
   subscriptionExpiresAt: Date | null;
+  pushSubscription: object | null;
 }
 
 interface ArtisanAttributes {
@@ -95,7 +96,7 @@ interface AdminUserAttributes {
 
 // ── Creation attributes (id auto-generated) ────────────────────
 
-type CustomerCreation = Optional<CustomerAttributes, 'id' | 'name' | 'whatsappId' | 'location' | 'referralCode' | 'referredBy' | 'discountUsed' | 'subscriptionTier' | 'subscriptionExpiresAt'>;
+type CustomerCreation = Optional<CustomerAttributes, 'id' | 'name' | 'whatsappId' | 'location' | 'referralCode' | 'referredBy' | 'discountUsed' | 'subscriptionTier' | 'subscriptionExpiresAt' | 'pushSubscription'>;
 type ArtisanCreation = Optional<ArtisanAttributes, 'id' | 'whatsappId' | 'location' | 'rating' | 'totalJobs' | 'verified' | 'available' | 'ninVerified' | 'referralCode' | 'referredBy' | 'priorityBoost' | 'paystackSubaccount' | 'profileSlug' | 'bio' | 'sharingLocation' | 'liveLocation' | 'portfolioPhotos'>;
 type ServiceRequestCreation = Optional<ServiceRequestAttributes, 'id' | 'description' | 'location' | 'estimatedPrice' | 'finalPrice' | 'status' | 'rating' | 'review' | 'completedAt' | 'discount' | 'photos' | 'guaranteeUsed' | 'CustomerId' | 'ArtisanId' | 'scheduledAt'>;
 type PaymentCreation = Optional<PaymentAttributes, 'id' | 'commission' | 'paystackRef' | 'status' | 'ServiceRequestId'>;
@@ -116,6 +117,7 @@ class Customer extends Model<CustomerAttributes, CustomerCreation> implements Cu
   declare discountUsed: boolean;
   declare subscriptionTier: 'free' | 'premium';
   declare subscriptionExpiresAt: Date | null;
+  declare pushSubscription: object | null;
 }
 
 class Artisan extends Model<ArtisanAttributes, ArtisanCreation> implements ArtisanAttributes {
@@ -210,6 +212,7 @@ Customer.init({
   discountUsed: { type: DataTypes.BOOLEAN, defaultValue: false },
   subscriptionTier: { type: DataTypes.ENUM('free', 'premium'), defaultValue: 'free' },
   subscriptionExpiresAt: { type: DataTypes.DATE },
+  pushSubscription: { type: DataTypes.JSONB },
 }, { sequelize });
 
 Artisan.init({

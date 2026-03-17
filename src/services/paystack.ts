@@ -45,3 +45,16 @@ export async function listBanks() {
   const { data } = await axios.get(`${PAYSTACK_BASE}/bank?country=nigeria`, { headers });
   return data.data as { name: string; code: string }[];
 }
+
+// Create a dedicated virtual account for a transaction (transfer payment)
+export async function createDedicatedAccount(params: { email: string; reference: string; amount: number }) {
+  // Use Paystack's dedicated virtual account (DVA) or generate transfer details
+  const body = {
+    email: params.email,
+    amount: params.amount,
+    reference: params.reference,
+    callback_url: 'https://out-one-red.vercel.app',
+  };
+  const { data } = await axios.post(`${PAYSTACK_BASE}/transaction/initialize`, { ...body, channels: ['bank_transfer'] }, { headers });
+  return data.data as { authorization_url: string; reference: string };
+}

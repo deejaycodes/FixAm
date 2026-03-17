@@ -3,7 +3,8 @@ import { ServiceRequest, Artisan, Customer, Quote, Message } from '../models';
 import { findBestArtisan } from '../services/matching';
 import { estimatePrice, applyLoyaltyDiscount } from '../services/pricing';
 import { sendMessage, sendButtons } from '../services/whatsapp';
-import { initializePayment } from '../services/paystack';
+import { initializePayment, createDedicatedAccount } from '../services/paystack';
+import { sendPushToCustomer } from '../services/push';
 
 const router = Router();
 
@@ -26,6 +27,8 @@ router.post('/', async (req: Request, res: Response) => {
   const artisan = await findBestArtisan(serviceType, location);
   if (artisan) {
     await request.update({ ArtisanId: artisan.id, status: 'assigned' });
+    // Push notification to customer
+    sendPushToCustomer(customerId, { title: '🎉 Artisan Found!', body: `${artisan.name} has been matched to your ${serviceType} request.`, url: '/' }).catch(() => {});
     if (artisan.whatsappId) {
       const urgency = emergency ? '🚨 EMERGENCY ' : '';
       const est = priceRange ? `₦${priceRange.min.toLocaleString()} – ₦${priceRange.max.toLocaleString()}` : 'TBD';
@@ -193,6 +196,42 @@ router.post('/:id/quotes/:quoteId/accept', async (req: Request, res: Response) =
     await sendMessage((quote as any).Artisan.whatsappId, '✅ Your quote was accepted! Please head to the customer.').catch(() => {});
   }
   res.json({ success: true });
+});
+
+// Transfer payment (bank transfer channel)
+router.post('/:id/transfer', async (req: Request, res: Response) => {
+  const request = await ServiceRequest.findByPk(req.params.id as string);
+  if (!request || request.CustomerId !== (req as any).customerId) {
+    res.status(404).json({ error: 'Not found' }); return;
+  }
+  if (!request.estimatedPrice) { res.status(400).json({ error: 'No price set' }); return; }
+  const customer = await Customer.findByPk((req as any).customerId);
+  const ref = `fixam_tr_${request.id}_${Date.now()}`;
+  try {
+    const result = await createDedicatedAccount({ email: `${customer?.phone || 'customer'}@fixam.ng`, reference: ref, amount: request.estimatedPrice });
+    res.json({ url: result.authorization_url, reference: result.reference });
+  } catch { res.status(500).json({ error: 'Transfer init failed' }); }
+});
+
+// Save push subscription
+router.post('/push/subscribe', async (req: Request, res: Response) => {
+  const customerId = (req as any).customerId;
+  const { subscription } = req.body;
+  if (!subscription) { res.status(400).json({ error: 'Subscription required' }); return; }
+  await Customer.update({ pushSubscription: subscription } as any, { where: { id: customerId } });
+  res.json({ success: true });
+});
+
+// Update profile
+router.put('/profile', async (req: Request, res: Response) => {
+  const customerId = (req as any).customerId;
+  const { name, phone } = req.body;
+  const updates: any = {};
+  if (name?.trim()) updates.name = name.trim();
+  if (phone?.trim()) updates.phone = phone.trim();
+  await Customer.update(updates, { where: { id: customerId } });
+  const customer = await Customer.findByPk(customerId);
+  res.json({ id: customer!.id, name: customer!.name, phone: customer!.phone, referralCode: customer!.referralCode });
 });
 
 export default router;

@@ -7,6 +7,7 @@ import { applyReferralCode } from './referral';
 import { isPremium } from './subscription';
 import { requestQuotes, submitQuote, getQuotesForRequest, acceptQuote } from './quotes';
 import { Customer, Artisan, ServiceRequest, Quote, Message } from '../models';
+import { sendPushToCustomer } from './push';
 import { fn, col, Op } from 'sequelize';
 import type { WhatsAppMessage } from './types';
 
@@ -168,6 +169,10 @@ async function handleArtisanJobResponse(from: string, artisan: InstanceType<type
     await request.update({ status: 'accepted' });
     await sendMessage(from, '✅ Job accepted! Contact the customer and head over.');
     const customer = await Customer.findByPk(request.CustomerId!);
+    // Push notification
+    if (request.CustomerId) {
+      sendPushToCustomer(request.CustomerId, { title: '🚗 Artisan on the way!', body: `${artisan.name} accepted your job and is heading to you.`, url: '/' }).catch(() => {});
+    }
     if (customer?.whatsappId) {
       await sendMessage(customer.whatsappId, `🎉 ${artisan.name} has accepted your job and is on the way!\n📞 Contact: ${artisan.phone}\n\nRate 1-5 when the job is done.`);
     }

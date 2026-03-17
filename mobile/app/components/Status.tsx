@@ -288,7 +288,12 @@ export default function Status({ nav, token, params }: { nav: (s: string, p?: an
                 window.open(url, '_blank');
               } catch { /* Paystack not configured */ }
             }} className="flex-1 text-center bg-white border border-gray-200 rounded-xl py-2.5 text-[10px] font-bold text-gray-700 active:scale-95 transition">💳 Pay Online</button>
-            <span className="flex-1 text-center bg-white border border-gray-200 rounded-xl py-2.5 text-[10px] font-bold text-gray-700">🏦 Transfer</span>
+            <button onClick={async () => {
+              try {
+                const { url } = await api(`/api/requests/${params.requestId}/transfer`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+                window.open(url, '_blank');
+              } catch { /* not configured */ }
+            }} className="flex-1 text-center bg-white border border-gray-200 rounded-xl py-2.5 text-[10px] font-bold text-gray-700 active:scale-95 transition">🏦 Transfer</button>
             <span className="flex-1 text-center bg-teal-50 border border-teal-200 rounded-xl py-2.5 text-[10px] font-bold text-teal-700">💵 Cash</span>
           </div>
         </div>

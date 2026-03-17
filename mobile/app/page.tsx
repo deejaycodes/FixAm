@@ -30,7 +30,19 @@ export default function App() {
   }, []);
 
   const finishOnboarding = () => { setOnboarded(true); localStorage.setItem('fixam_onboarded', '1'); };
-  const login = (t: string, u: any) => { setToken(t); setUser(u); localStorage.setItem('fixam_auth', JSON.stringify({ token: t, user: u })); };
+  const login = (t: string, u: any) => {
+    setToken(t); setUser(u); localStorage.setItem('fixam_auth', JSON.stringify({ token: t, user: u }));
+    // Subscribe to push notifications
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY })
+          .then(sub => fetch('https://fixam-production.up.railway.app/api/requests/push/subscribe', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
+            body: JSON.stringify({ subscription: sub.toJSON() }),
+          })).catch(() => {});
+      });
+    }
+  };
   const logout = () => { setToken(null); setUser(null); localStorage.removeItem('fixam_auth'); setScreen('home'); };
   const nav = (s: string, p?: any) => { setScreen(s); if (p) setParams(p); window.scrollTo(0, 0); };
 
@@ -48,7 +60,7 @@ export default function App() {
         {screen === 'new' && <NewRequest nav={nav} token={token} user={user} params={params} onNeedAuth={login} />}
         {screen === 'status' && <Status nav={nav} token={token!} params={params} />}
         {screen === 'activity' && <Activity nav={nav} token={token!} />}
-        {screen === 'profile' && <Profile user={user} logout={logout} />}
+        {screen === 'profile' && <Profile user={user} logout={logout} onUpdateUser={(u: any) => { setUser(u); localStorage.setItem('fixam_auth', JSON.stringify({ token, user: u })); }} />}
       </div>
 
       {isDetail && (
