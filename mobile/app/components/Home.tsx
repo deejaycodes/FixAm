@@ -61,9 +61,16 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
       .then(r => { if (r.length > 0) setRecent(r[0]); }).catch(() => {});
   }, [token]);
 
-  const filtered = query.trim()
-    ? services.filter(s => s.name.toLowerCase().includes(query.toLowerCase()) || s.desc.toLowerCase().includes(query.toLowerCase()))
-    : [];
+  const [tab, setTab] = useState('all');
+  const categories: Record<string, string[]> = {
+    'All': [],
+    '🏠 Home': ['plumbing', 'electrical', 'ac_repair', 'generator', 'cleaning', 'fumigation', 'painting'],
+    '💄 Beauty': ['makeup'],
+    '🔨 Build': ['carpentry', 'tiling', 'welding', 'cctv'],
+    '🚗 Auto': ['mechanic'],
+  };
+  const catKeys = Object.keys(categories);
+  const visibleServices = tab === 'All' ? services.filter(s => s.id !== 'emergency') : services.filter(s => categories[tab]?.includes(s.id));
 
   return (
     <div className="animate-in pb-4 bg-white min-h-screen">
@@ -89,7 +96,9 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
             placeholder="Search services..." value={query}
             onChange={e => setQuery(e.target.value)}
             onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 150)} />
-          {focused && query.trim() && (
+          {focused && query.trim() && (() => {
+            const filtered = services.filter(s => s.name.toLowerCase().includes(query.toLowerCase()) || s.desc.toLowerCase().includes(query.toLowerCase()));
+            return (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
               {filtered.length === 0 ? (
                 <p className="px-4 py-3 text-sm text-gray-500">No matching services</p>
@@ -105,7 +114,8 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
                 </button>
               ))}
             </div>
-          )}
+            );
+          })()}
         </div>
       </div>
 
@@ -136,8 +146,16 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
       {/* Services */}
       <div className="px-5 mt-6">
         <h3 className="text-sm font-bold text-gray-900 mb-3">Services</h3>
+        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-3">
+          {catKeys.map(c => (
+            <button key={c} onClick={() => setTab(c)}
+              className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition ${tab === c ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 active:bg-gray-200'}`}>
+              {c}
+            </button>
+          ))}
+        </div>
         <div className="grid grid-cols-3 gap-3">
-          {services.map(s => (
+          {visibleServices.map(s => (
             <button key={s.id} onClick={() => nav('new', { serviceType: s.id, serviceName: s.name, serviceIcon: s.icon })}
               className="flex flex-col items-center p-3.5 rounded-2xl border-2 border-gray-100 bg-white shadow-sm active:scale-95 transition">
               <div className={`w-12 h-12 ${s.bg} rounded-xl flex items-center justify-center text-2xl mb-2`}>{s.icon}</div>
@@ -146,6 +164,11 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
             </button>
           ))}
         </div>
+        <button onClick={() => nav('new', { serviceType: 'emergency', serviceName: 'Emergency', serviceIcon: '🚨' })}
+          className="w-full mt-3 bg-red-50 border-2 border-red-200 rounded-2xl py-3 flex items-center justify-center gap-2 active:scale-[0.98] transition">
+          <span className="text-lg">🚨</span>
+          <span className="text-xs font-bold text-red-700">Emergency — 24/7 urgent help (1.5x rate)</span>
+        </button>
       </div>
 
       {/* Recent booking */}
