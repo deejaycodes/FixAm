@@ -154,13 +154,16 @@ export default function Home({ nav, token, user }: { nav: (s: string, p?: any) =
             </button>
           ))}
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {visibleServices.map(s => (
             <button key={s.id} onClick={() => nav('new', { serviceType: s.id, serviceName: s.name, serviceIcon: s.icon })}
-              className="flex flex-col items-center p-3.5 rounded-2xl border-2 border-gray-100 bg-white shadow-sm active:scale-95 transition">
-              <div className={`w-12 h-12 ${s.bg} rounded-xl flex items-center justify-center text-2xl mb-2`}>{s.icon}</div>
-              <span className="font-bold text-xs text-gray-900">{s.name}</span>
-              <span className="text-[10px] text-teal-600 font-semibold mt-0.5">from {s.from}</span>
+              className="flex items-center gap-3 p-4 rounded-2xl border-2 border-gray-100 bg-white shadow-sm active:scale-95 transition">
+              <div className={`w-14 h-14 ${s.bg} rounded-xl flex items-center justify-center text-2xl flex-shrink-0`}>{s.icon}</div>
+              <div className="text-left min-w-0">
+                <span className="font-bold text-sm text-gray-900 block">{s.name}</span>
+                <span className="text-[11px] text-gray-500 block">{s.desc}</span>
+                <span className="text-[11px] text-teal-600 font-semibold">from {s.from}</span>
+              </div>
             </button>
           ))}
         </div>
